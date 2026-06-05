@@ -1,4 +1,5 @@
 djangorestframework
+drf-nested-routers
 django-filter
 drf_orjson_renderer
 djangorestframework-camel-case

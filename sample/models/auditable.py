@@ -3,14 +3,20 @@ from django.db import models
 from django.utils import timezone
 
 class AuditableQuerySet(models.QuerySet):
-    def delete(self, *args, **kwargs):
-        user = kwargs.pop('performed_by')
-        if not user or not isinstance(user, User):
-            raise TypeError(f"delete() missing 1 required positional argument: 'performed_by' of type {User.__name__}")
+    def delete(self, performed_by: User):
+        if not isinstance(performed_by, User):
+            raise TypeError(f"'performed_by' parameter must be of type {User.__name__}")
         return super().update(
             is_deleted=True,
             deleted=timezone.now(),
-            deleted_by=user.username
+            deleted_by=performed_by.username
+        )
+
+    def restore(self):
+        return super().update(
+            is_deleted=False,
+            deleted=None,
+            deleted_by=None
         )
 
     def update(self, **kwargs):
@@ -60,12 +66,12 @@ class AuditableMixin(models.Model):
         abstract = True
 
     def delete(self, *args, **kwargs):
-        user = kwargs.get('user')
+        user = kwargs.get('performed_by')
         if not user or not isinstance(user, User):
-            raise TypeError(f"delete() missing 1 required positional argument: 'user' of type {User.__name__}")
+            raise TypeError(f"delete() missing 1 required positional argument: 'performed_by' of type {User.__name__}")
         self.deleted = timezone.now()
         self.deleted_by = user.username
-        self.save(updated_fields=['is_deleted', 'deleted', 'deleted_by'])
+        self.save(updated_fields=['is_deleted', 'deleted', 'deleted_by'], *args, **kwargs)
 
     def restore(self):
         self.is_deleted = False
@@ -74,7 +80,7 @@ class AuditableMixin(models.Model):
         self.save(updated_fields=['is_deleted', 'deleted', 'deleted_by'])
 
     def save(self, *args, **kwargs):
-        user = kwargs.get('performed_by')
+        user = kwargs.pop('performed_by')
         if not user or not isinstance(user, User):
             raise TypeError(f"save() missing 1 required positional argument: 'performed_by' of type {User.__name__}")
         self.created_by = self.created_by or user.username
