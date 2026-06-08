@@ -14,14 +14,18 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import include, path
 from django.views.generic import RedirectView
 
 from sample import urls
 
+def health_check(request):
+    return JsonResponse({'status': 'OK'})
+
 urlpatterns = [
-    # path('admin/', admin.site.urls),
     path("api/", include(urls)),
     path('', RedirectView.as_view(url='api/', permanent=True)),
+    path('health/', health_check, name='health_check'),
 ]
+

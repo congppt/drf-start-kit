@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User, Group
 import django_filters
-from rest_framework import viewsets, permissions, mixins
+from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -10,7 +10,9 @@ from ..serializers.user import (
     UserUpdateSerializer,
     UserSelfUpdateSerializer,
     SuperUserPasswordChangeSerializer,
-    PasswordSelfChangeSerializer
+    PasswordSelfChangeSerializer,
+    UserAvatarSelfUpdateSerializer,
+    UserAvatarUploadUrlSerializer
 )
 
 class UserFilter(django_filters.FilterSet):
@@ -21,14 +23,8 @@ class UserFilter(django_filters.FilterSet):
         model = User
         fields = ['is_active']
 
-class UserViewSet(
-    mixins.CreateModelMixin,
-    mixins.UpdateModelMixin,
-    mixins.RetrieveModelMixin,
-    mixins.ListModelMixin,
-    viewsets.GenericViewSet
-):
-    queryset = User.objects.select_related('detail').all()
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.select_related('detail').prefetch_related('detail__attachments__file').all()
     permission_classes = [permissions.DjangoModelPermissions]
     filterset_class = UserFilter
 
@@ -43,6 +39,10 @@ class UserViewSet(
             return SuperUserPasswordChangeSerializer
         if self.action == 'change_password_self':
             return PasswordSelfChangeSerializer
+        if self.action == 'generate_avatar_upload_url_self':
+            return UserAvatarUploadUrlSerializer
+        if self.action == 'change_avatar_self':
+            return UserAvatarSelfUpdateSerializer
         return UserSerializer
 
     def perform_create(self, serializer):
@@ -69,6 +69,21 @@ class UserViewSet(
 
     @action(detail=False, methods=['patch'], url_path='me/password')
     def change_password_self(self, request, pk=None):
+        instance = request.user
+        serializer = self.get_serializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(performed_by=request.user)
+        return Response()
+
+    @action(detail=False, methods=['post'], url_path='me/avatar/presigned-upload-url', permission_classes=[permissions.IsAuthenticated])
+    def generate_avatar_upload_url_self(self, request, pk=None):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.save()
+        return Response(data)
+
+    @action(detail=False, methods=['patch'], url_path='me/avatar')
+    def change_avatar_self(self, request, pk=None):
         instance = request.user
         serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)

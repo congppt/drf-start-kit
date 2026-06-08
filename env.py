@@ -1,4 +1,3 @@
-import json
 import os
 from pathlib import Path
 from urllib.parse import urlparse
@@ -25,14 +24,12 @@ REDIS_URL = os.getenv("REDIS_URL")
 if not REDIS_URL:
     raise EnvironmentError("REDIS_URL is not configured")
 
-MINIO_CONFIG = os.getenv("MINIO_CONFIG")
-if not MINIO_CONFIG:
-    raise EnvironmentError("MINIO_URL is not configured")
-__parsed_minio_config = json.loads(MINIO_CONFIG)
-MINIO_ENDPOINT = __parsed_minio_config["endpoint"]
-MINIO_ACCESS_KEY = __parsed_minio_config["username"]
-MINIO_SECRET_KEY = __parsed_minio_config["password"]
-MINIO_BUCKET = __parsed_minio_config["bucket"]
+MINIO_ENDPOINT = os.getenv("MINIO__ENDPOINT")
+MINIO_ACCESS_KEY = os.getenv("MINIO__ACCESS_KEY")
+MINIO_SECRET_KEY = os.getenv("MINIO__SECRET_KEY")
+MINIO_PUBLIC_BUCKET = os.getenv("MINIO__PUBLIC_BUCKET")
+MINIO_PRIVATE_BUCKET = os.getenv("MINIO__PRIVATE_BUCKET")
+MINIO_PUBLIC_URL = os.getenv("MINIO__PUBLIC_URL", f"http://{MINIO_ENDPOINT}/{MINIO_PUBLIC_BUCKET}")
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:

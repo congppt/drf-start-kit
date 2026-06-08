@@ -1,18 +1,45 @@
+from django.conf import settings
+from django.core import validators
 from django.contrib.auth.models import User, Group
 from django.contrib.auth import password_validation
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
 
-from ..models import Department, UserDetail
+from utils.minio import minio
+from utils.django.models.file import UploadStatus
+
+from ..models import Department, FileAsset, UserDetail
 from ..serializers.group import GroupSerializer
 
 
+AVATAR_FIELD_NAME = 'avatar'
+AVATAR_IS_PUBLIC = False
+
 class UserSerializer(serializers.ModelSerializer):
     department_id = serializers.PrimaryKeyRelatedField(queryset=Department.objects.all(), source='detail.department')
+    avatar_url = serializers.SerializerMethodField()
     groups = GroupSerializer(many=True, read_only=True)
     class Meta:
         model = User
         exclude = ['password', 'user_permissions']
+
+    def get_avatar_url(self, obj: User):
+        detail = getattr(obj, 'detail', None)
+        if not detail:
+            return None
+        attachment = (
+            detail.attachments
+            .filter(field_name=AVATAR_FIELD_NAME, file__status=UploadStatus.READY)
+            .select_related('file')
+            .first()
+        )
+        if not attachment:
+            return None
+        file_asset = attachment.file
+        if file_asset.is_public:
+            return minio.get_public_url(file_asset.id)
+        return minio.presigned_download(file_asset.id, file_asset.name)
 
 class UserCreateSerializer(UserSerializer):
     password = serializers.CharField(validators=[password_validation.validate_password])
@@ -60,6 +87,12 @@ class UserSelfUpdateSerializer(UserSerializer):
 
 class SuperUserPasswordChangeSerializer(serializers.Serializer):
     new_password = serializers.CharField(validators=[password_validation.validate_password])
+
+    def update(self, instance: User, validated_data: dict):
+        instance.set_password(validated_data['new_password'])
+        instance.save()
+        return instance
+
 class PasswordSelfChangeSerializer(SuperUserPasswordChangeSerializer):
     old_password = serializers.CharField()
     
@@ -68,7 +101,63 @@ class PasswordSelfChangeSerializer(SuperUserPasswordChangeSerializer):
             raise serializers.ValidationError({'old_password': 'Old password is incorrect'})
         return attrs
 
+class UserAvatarUploadUrlSerializer(serializers.Serializer):
+    file_name = serializers.CharField(validators=[validators.RegexValidator(regex=r'^[^/\\?%*:|"<>\x00]+$')])
+    file_size = serializers.IntegerField(validators=[validators.MinValueValidator(1), validators.MaxValueValidator(settings.FILE_UPLOAD_MAX_MEMORY_SIZE)])
+    content_type = serializers.CharField(validators=[validators.RegexValidator(regex=r'^image/.*$')])
+
+    def save(self, **kwargs):
+        validated_data = self.validated_data
+        request = self.context['request']
+        with transaction.atomic():
+            file_asset = FileAsset.objects.create(
+                name=validated_data['file_name'],
+                content_type=validated_data['content_type'],
+                size=validated_data['file_size'],
+                is_public=AVATAR_IS_PUBLIC,
+                owner=request.user.username,
+            )
+            url = minio.presigned_upload(file_asset.id, timezone.timedelta(seconds=settings.FILE_ORPHANED_INTERVAL + 60), is_public=AVATAR_IS_PUBLIC)
+        return {
+            'file_id': file_asset.id,
+            'upload_url': url,
+            'expires_at': timezone.now() + timezone.timedelta(minutes=10),
+        }
+
+
+class UserAvatarSelfUpdateSerializer(serializers.Serializer):
+    file_id = serializers.PrimaryKeyRelatedField(queryset=FileAsset.objects.all())
+
+    def validate_file_id(self, value: FileAsset):
+        request = self.context['request']
+        detail = getattr(request.user, 'detail', None)
+        if not detail:
+            raise serializers.ValidationError('Current user does not have a detail record.')
+        if value.owner != request.user.username:
+            raise serializers.ValidationError('File does not belong to the current user.')
+        attachment = getattr(value, 'attachment', None)
+        if attachment and (
+            attachment.content_object != detail
+            or attachment.field_name != AVATAR_FIELD_NAME
+        ):
+            raise serializers.ValidationError('File is already attached to another entity.')
+        file_stat = minio.stat(value.id, is_public=AVATAR_IS_PUBLIC)
+        if not file_stat:
+            raise serializers.ValidationError('File does not exist.')
+        if file_stat.size != value.size:
+            raise serializers.ValidationError('File size does not match.')
+        if file_stat.content_type != value.content_type:
+            raise serializers.ValidationError('File content type does not match.')
+        return value
+
     def update(self, instance: User, validated_data: dict):
-        instance.set_password(validated_data['new_password'])
-        instance.save()
+        file_asset = validated_data['file_id']
+        with transaction.atomic():
+            instance.detail.attachments.filter(field_name=AVATAR_FIELD_NAME).delete()
+            instance.detail.attachments.create(
+                file=file_asset,
+                field_name=AVATAR_FIELD_NAME,
+            )
+            file_asset.status = UploadStatus.READY
+            file_asset.save()
         return instance

@@ -11,8 +11,17 @@ services:
   server:
     build:
       context: .
+    volumes:
+      - ./logs:/dist/logs
+    env_file:
+      - .env
     ports:
       - 8000:8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
 
 # The commented out section below is an example of how to define a PostgreSQL
 # database that your application can use. `depends_on` tells Docker Compose to

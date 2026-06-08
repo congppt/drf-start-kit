@@ -1,5 +1,4 @@
-from django.contrib.auth.models import Permission, ContentType
-import django_filters
+from django.contrib.auth.models import Permission
 from rest_framework import viewsets, permissions, mixins
 
 from ..serializers.permission import PermissionSerializer

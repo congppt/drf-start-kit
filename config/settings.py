@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+from contextlib import suppress
 import importlib
 from pathlib import Path
 from django.utils.timezone import timedelta
@@ -50,7 +51,6 @@ INSTALLED_APPS = [
     env.APP_DIR,
     'drf_spectacular',
     'drf_spectacular_sidecar',
-    
 ]
 
 REST_FRAMEWORK = {
@@ -87,21 +87,19 @@ JSON_CAMEL_CASE = {
 }
 
 custom_middlewares = []
-try:
+with suppress(ImportError):
     BASE_PATH = f'{env.APP_DIR}.middlewares'
     module = importlib.import_module(BASE_PATH)
     custom_middlewares = [f'{BASE_PATH}.{middleware}' for middleware in getattr(module, '__all__', [])]
-except ImportError:
-    pass
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     # 'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     # 'django.contrib.auth.middleware.AuthenticationMiddleware',
     # 'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
     *custom_middlewares,
     'djangorestframework_camel_case.middleware.CamelCaseMiddleWare',
     'django.middleware.locale.LocaleMiddleware'
@@ -200,6 +198,8 @@ HUEY = {
 SIMPLE_JWT = {
   "TOKEN_OBTAIN_SERIALIZER": f"{env.APP_DIR}.serializers.auth.TokenSerializer",
   "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5) if env.IS_PRODUCTION else timedelta(days=30),
+  "TOKEN_TYPE_CLAIM": "tokenType",
+  "USER_ID_CLAIM": "userId",
 }
 
 
@@ -244,3 +244,5 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20MB
+
+FILE_ORPHANED_INTERVAL = 60 * 10 # 10 minutes
