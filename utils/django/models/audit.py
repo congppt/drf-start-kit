@@ -92,6 +92,7 @@ class AuditableMixin(models.Model):
         user = kwargs.get('performed_by')
         if not user or not isinstance(user, User):
             raise TypeError(f"delete() missing 1 required positional argument: 'performed_by' of type {User.__name__}")
+        self.is_deleted = True
         self.deleted = timezone.now()
         self.deleted_by = user.username
         self.save(updated_fields=['is_deleted', 'deleted', 'deleted_by'], *args, **kwargs)

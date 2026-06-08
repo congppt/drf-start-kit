@@ -102,20 +102,23 @@ class PasswordSelfChangeSerializer(SuperUserPasswordChangeSerializer):
         return attrs
 
 class UserAvatarUploadUrlSerializer(serializers.Serializer):
-    file_name = serializers.CharField(validators=[validators.RegexValidator(regex=r'^[^/\\?%*:|"<>\x00]+$')])
-    file_size = serializers.IntegerField(validators=[validators.MinValueValidator(1), validators.MaxValueValidator(settings.FILE_UPLOAD_MAX_MEMORY_SIZE)])
-    content_type = serializers.CharField(validators=[validators.RegexValidator(regex=r'^image/.*$')])
+    file_name = serializers.CharField(write_only=True, validators=[validators.RegexValidator(regex=r'^[^/\\?%*:|"<>\x00]+$')])
+    file_size = serializers.IntegerField(write_only=True, validators=[validators.MinValueValidator(1), validators.MaxValueValidator(settings.FILE_UPLOAD_MAX_MEMORY_SIZE)])
+    content_type = serializers.CharField(write_only=True, validators=[validators.RegexValidator(regex=r'^image/.*$')])
 
-    def save(self, **kwargs):
-        validated_data = self.validated_data
-        request = self.context['request']
+    upload_url = serializers.CharField(read_only=True)
+    file_id = serializers.UUIDField(read_only=True)
+    expires_at = serializers.DateTimeField(read_only=True)
+
+    def create(self, validated_data: dict):
+        performed_by = validated_data.pop('performed_by')
         with transaction.atomic():
             file_asset = FileAsset.objects.create(
                 name=validated_data['file_name'],
                 content_type=validated_data['content_type'],
                 size=validated_data['file_size'],
                 is_public=AVATAR_IS_PUBLIC,
-                owner=request.user.username,
+                owner=performed_by.username,
             )
             url = minio.presigned_upload(file_asset.id, timezone.timedelta(seconds=settings.FILE_ORPHANED_INTERVAL + 60), is_public=AVATAR_IS_PUBLIC)
         return {

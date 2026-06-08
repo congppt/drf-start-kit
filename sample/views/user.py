@@ -79,8 +79,8 @@ class UserViewSet(viewsets.ModelViewSet):
     def generate_avatar_upload_url_self(self, request, pk=None):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        data = serializer.save()
-        return Response(data)
+        serializer.save(performed_by=request.user)
+        return Response(serializer.data)
 
     @action(detail=False, methods=['patch'], url_path='me/avatar')
     def change_avatar_self(self, request, pk=None):

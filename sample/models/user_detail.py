@@ -2,9 +2,10 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 
-from .auditable import AuditableMixin
 from .department import Department
 from .file import FileAttachment
+from utils.django.models.audit import AuditableMixin
+
 
 
 class UserDetail(AuditableMixin, models.Model):

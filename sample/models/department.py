@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 from django.db import models
 from django.contrib.auth.models import User
 
-from .auditable import AuditableMixin
+from utils.django.models.audit import AuditableMixin
 
 if TYPE_CHECKING:
     from .user_detail import UserDetail

@@ -47,11 +47,10 @@ USER appuser
 # Copy the source code into the container.
 COPY . .
 
-ARG START_SCRIPT=/dist/linux-start.sh
-RUN chmod +x ${START_SCRIPT}
+RUN chmod +x /dist/linux-start.sh
 
 # Expose the port that the application listens on.
 EXPOSE 8000
 
 # Run the application.
-ENTRYPOINT ["${START_SCRIPT}"]
+ENTRYPOINT ["/dist/linux-start.sh"]
