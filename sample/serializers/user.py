@@ -36,7 +36,7 @@ class UserUpdateSerializer(UserSerializer):
     groups = serializers.PrimaryKeyRelatedField(many=True, queryset=Group.objects.all())
     class Meta:
         model = User
-        exclude = ['password', 'last_login', 'date_joined', 'user_permissions']
+        exclude = ['username', 'password', 'last_login', 'date_joined', 'user_permissions']
 
     def update(self, instance: User, validated_data: dict):
         performed_by = validated_data.pop('performed_by')

@@ -1,4 +1,5 @@
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
+import django_filters
 from rest_framework import viewsets, permissions, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -12,6 +13,14 @@ from ..serializers.user import (
     PasswordSelfChangeSerializer
 )
 
+class UserFilter(django_filters.FilterSet):
+    username = django_filters.CharFilter(lookup_expr='icontains')
+    groups = django_filters.ModelMultipleChoiceFilter(queryset=Group.objects.all())
+
+    class Meta:
+        model = User
+        fields = ['is_active']
+
 class UserViewSet(
     mixins.CreateModelMixin,
     mixins.UpdateModelMixin,
@@ -21,6 +30,7 @@ class UserViewSet(
 ):
     queryset = User.objects.select_related('detail').all()
     permission_classes = [permissions.DjangoModelPermissions]
+    filterset_class = UserFilter
 
     def get_serializer_class(self):
         if self.action == 'create':

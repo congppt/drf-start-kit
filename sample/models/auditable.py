@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.models import manager
 from django.utils import timezone
 
 class AuditableQuerySet(models.QuerySet):
@@ -36,6 +37,28 @@ class AuditableQuerySet(models.QuerySet):
             obj.updated_by = user.username
         return super().bulk_update(*args, **kwargs)
 
+    def create(self, *args, **kwargs):
+        """
+        Create a new object with the given kwargs, saving it to the database
+        and returning the created object.
+        """
+        user = kwargs.pop('performed_by')
+        if not user or not isinstance(user, User):
+            raise TypeError(f"create() missing 1 required positional argument: 'performed_by' of type {User.__name__}")
+        reverse_one_to_one_fields = frozenset(kwargs).intersection(
+            self.model._meta._reverse_one_to_one_field_names
+        )
+        if reverse_one_to_one_fields:
+            raise ValueError(
+                "The following fields do not exist in this model: %s"
+                % ", ".join(reverse_one_to_one_fields)
+            )
+
+        obj = self.model(**kwargs)
+        self._for_write = True
+        obj.save(performed_by=user, force_insert=True, using=self.db)
+        return obj
+
     def bulk_create(self, *args, **kwargs):
         user = kwargs.pop('performed_by')
         if not user or not isinstance(user, User):
@@ -46,7 +69,7 @@ class AuditableQuerySet(models.QuerySet):
         return super().bulk_create(*args, **kwargs)
 
 
-class AuditableManager(models.Manager):
+class AuditableManager(manager.BaseManager.from_queryset(AuditableQuerySet)):
     def get_queryset(self):
         return super().get_queryset().filter(is_deleted=False)
 
@@ -77,7 +100,7 @@ class AuditableMixin(models.Model):
         self.is_deleted = False
         self.deleted = None
         self.deleted_by = None
-        self.save(updated_fields=['is_deleted', 'deleted', 'deleted_by'])
+        super().save(updated_fields=['is_deleted', 'deleted', 'deleted_by'])
 
     def save(self, *args, **kwargs):
         user = kwargs.pop('performed_by')
