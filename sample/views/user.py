@@ -9,11 +9,12 @@ from ..serializers.user import (
     UserCreateSerializer,
     UserUpdateSerializer,
     UserSelfUpdateSerializer,
-    SuperUserPasswordChangeSerializer,
+    PasswordChangeSerializer,
     PasswordSelfChangeSerializer,
     UserAvatarSelfUpdateSerializer,
     UserAvatarUploadUrlSerializer
 )
+from utils.rest_framework.permissions import require
 
 class UserFilter(django_filters.FilterSet):
     username = django_filters.CharFilter(lookup_expr='icontains')
@@ -36,7 +37,7 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action in ['update_self', 'partial_update_self']:
             return UserSelfUpdateSerializer
         if self.action == 'change_password':
-            return SuperUserPasswordChangeSerializer
+            return PasswordChangeSerializer
         if self.action == 'change_password_self':
             return PasswordSelfChangeSerializer
         if self.action == 'generate_avatar_upload_url_self':
@@ -54,20 +55,25 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['patch'], url_path='me')
     def update_self(self, request, pk=None):
         instance = request.user
-        serializer = self.get_serializer(instance, data=request.data)
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save(performed_by=request.user)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['patch'], url_path='password')
+    @action(
+        detail=True,
+        methods=['put'],
+        url_path='password',
+        permission_classes=[permissions.DjangoModelPermissions, require('sample.change_user_detail')]
+    )
     def change_password(self, request, pk=None):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(performed_by=request.user)
+        serializer.save()
         return Response()
 
-    @action(detail=False, methods=['patch'], url_path='me/password')
+    @action(detail=False, methods=['put'], url_path='me/password')
     def change_password_self(self, request, pk=None):
         instance = request.user
         serializer = self.get_serializer(instance, data=request.data)
@@ -82,7 +88,7 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer.save(performed_by=request.user)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['patch'], url_path='me/avatar')
+    @action(detail=False, methods=['put'], url_path='me/avatar')
     def change_avatar_self(self, request, pk=None):
         instance = request.user
         serializer = self.get_serializer(instance, data=request.data)

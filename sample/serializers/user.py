@@ -24,7 +24,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         exclude = ['password', 'user_permissions']
 
-    def get_avatar_url(self, obj: User):
+    def get_avatar_url(self, obj: User) -> str | None:
         detail = getattr(obj, 'detail', None)
         if not detail:
             return None
@@ -85,7 +85,7 @@ class UserSelfUpdateSerializer(UserSerializer):
         model = User
         fields = ['first_name', 'last_name', 'email']
 
-class SuperUserPasswordChangeSerializer(serializers.Serializer):
+class PasswordChangeSerializer(serializers.Serializer):
     new_password = serializers.CharField(validators=[password_validation.validate_password])
 
     def update(self, instance: User, validated_data: dict):
@@ -93,7 +93,7 @@ class SuperUserPasswordChangeSerializer(serializers.Serializer):
         instance.save()
         return instance
 
-class PasswordSelfChangeSerializer(SuperUserPasswordChangeSerializer):
+class PasswordSelfChangeSerializer(PasswordChangeSerializer):
     old_password = serializers.CharField()
     
     def validate(self, attrs: dict):
