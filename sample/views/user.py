@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User, Group
 import django_filters
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -14,7 +14,8 @@ from ..serializers.user import (
     UserAvatarSelfUpdateSerializer,
     UserAvatarUploadUrlSerializer
 )
-from utils.rest_framework.permissions import require
+from utils.rest_framework.permissions import permissions_class_factory
+from utils.rest_framework import pagination
 
 class UserFilter(django_filters.FilterSet):
     username = django_filters.CharFilter(lookup_expr='icontains')
@@ -24,10 +25,17 @@ class UserFilter(django_filters.FilterSet):
         model = User
         fields = ['is_active']
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+):
     queryset = User.objects.select_related('detail').prefetch_related('detail__attachments__file').all()
     permission_classes = [permissions.DjangoModelPermissions]
     filterset_class = UserFilter
+    pagination_class = pagination.limit_offset_class_factory(maximum_limit=100)
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -64,7 +72,10 @@ class UserViewSet(viewsets.ModelViewSet):
         detail=True,
         methods=['put'],
         url_path='password',
-        permission_classes=[permissions.DjangoModelPermissions, require('sample.change_user_detail')]
+        permission_classes=[
+            permissions.DjangoModelPermissions,
+            permissions_class_factory('sample.change_user_detail')
+        ]
     )
     def change_password(self, request, pk=None):
         instance = self.get_object()

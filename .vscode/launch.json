@@ -14,7 +14,19 @@
             "django": true,
             "justMyCode": false,
             "autoStartBrowser": false,
-            "program": "${workspaceFolder}\\manage.py"
+            "windows": {
+                "cwd": "${workspaceFolder}",
+                "program": "${workspaceFolder}\\manage.py"
+            },
+            "linux": {
+                "cwd": "${workspaceFolder}",
+                "program": "${workspaceFolder}/manage.py"
+            },
+            "osx": {
+                "cwd": "${workspaceFolder}",
+                "program": "${workspaceFolder}/manage.py"
+            },
+
         }
     ]
 }

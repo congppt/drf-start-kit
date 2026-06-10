@@ -8,7 +8,7 @@ load_dotenv()
 
 __ENV = os.getenv("ENV", "LOCAL").upper()
 IS_PRODUCTION = __ENV == "PRODUCTION"
-IS_LOCAL = __ENV == "LOCAL"
+IS_LOCAL = not IS_PRODUCTION
 
 DB_URL = os.getenv("DB_URL")
 if not DB_URL:
@@ -21,7 +21,7 @@ DB_PASSWORD = __parsed_db_url.password
 DB_NAME = __parsed_db_url.path.lstrip("/")
 
 REDIS_URL = os.getenv("REDIS_URL")
-if not REDIS_URL:
+if not REDIS_URL and not IS_LOCAL:
     raise EnvironmentError("REDIS_URL is not configured")
 
 MINIO_ENDPOINT = os.getenv("MINIO__ENDPOINT")
@@ -35,28 +35,5 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise EnvironmentError("SECRET_KEY is not configured")
 
-__exclude_dirs = ["core", "static", "staticfiles", "utils", "sample", 'logs']
-
-# 2. Get the directory where the current script is located
-__current_dir = Path(__file__).parent.resolve()
-
-
-def __get_app_dir(base_path: Path, ignore_list: list[str]) -> str | None:
-    # Iterate through all items in the current directory
-    for path in base_path.iterdir():
-        # Check if it's a directory AND it's not a hidden directory and its name isn't in your list
-        if (
-            path.is_dir()
-            and not path.name.startswith(".")
-            and path.name not in ignore_list
-        ):
-            return path.name
-    raise SystemError("No app name found")
-
-
-# Execute if not hardcoded
-APP_DIR = "sample" or __get_app_dir(__current_dir, __exclude_dirs)
-if not APP_DIR:
-    raise EnvironmentError("App directory not found")
-
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",") if not IS_LOCAL else []
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",") if not IS_LOCAL else []
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "").split(",") if not IS_LOCAL else []

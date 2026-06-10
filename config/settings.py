@@ -22,6 +22,7 @@ import env
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+APP_DIR = "sample"
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -35,7 +36,8 @@ DEBUG = env.IS_LOCAL
 USE_X_FORWARDED_HOST = True
 ALLOWED_HOSTS = env.ALLOWED_HOSTS
 
-
+CORS_ALLOWED_ORIGINS = env.ALLOWED_ORIGINS
+CORS_ALLOW_ALL_ORIGINS = env.IS_LOCAL or not env.ALLOWED_ORIGINS
 # Application definition
 
 INSTALLED_APPS = [
@@ -45,10 +47,12 @@ INSTALLED_APPS = [
     # 'django.contrib.sessions',
     # 'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
+    'rest_framework',
     'rest_framework_simplejwt',
     'django_filters',
-    'rest_framework',
-    env.APP_DIR,
+    APP_DIR,
+    'huey.contrib.djhuey',
     'drf_spectacular',
     'drf_spectacular_sidecar',
 ]
@@ -88,13 +92,14 @@ JSON_CAMEL_CASE = {
 
 custom_middlewares = []
 with suppress(ImportError):
-    BASE_PATH = f'{env.APP_DIR}.middlewares'
+    BASE_PATH = f'{APP_DIR}.middlewares'
     module = importlib.import_module(BASE_PATH)
     custom_middlewares = [f'{BASE_PATH}.{middleware}' for middleware in getattr(module, '__all__', [])]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     # 'django.contrib.sessions.middleware.SessionMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.common.CommonMiddleware',
     # 'django.middleware.csrf.CsrfViewMiddleware',
     # 'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -172,17 +177,17 @@ HUEY = {
     "immediate": False,  # If true, run synchronously. Periodic task cannot run in sync mode
     "utc": True,  # Use UTC for all times internally.
     "blocking": True,  # Perform blocking pop rather than poll Redis.
-    # 'url': env.REDIS_URL,
-    "database": PooledPostgresqlDatabase(
-        env.DB_NAME,
-        user=env.DB_USER,
-        password=env.DB_PASSWORD,
-        host=env.DB_HOST,
-        port=env.DB_PORT,
-        max_connections=30,
-        stale_timeout=300,
-        timeout=30,
-    ),
+    'database': 'sqlite:///db.sqlite3',
+    # "database": PooledPostgresqlDatabase(
+    #     env.DB_NAME,
+    #     user=env.DB_USER,
+    #     password=env.DB_PASSWORD,
+    #     host=env.DB_HOST,
+    #     port=env.DB_PORT,
+    #     max_connections=30,
+    #     stale_timeout=300,
+    #     timeout=30,
+    # ),
     "consumer": {
         "workers": 10,
         "worker_type": "thread",
@@ -198,7 +203,7 @@ HUEY = {
 
 
 SIMPLE_JWT = {
-  "TOKEN_OBTAIN_SERIALIZER": f"{env.APP_DIR}.serializers.auth.TokenSerializer",
+  "TOKEN_OBTAIN_SERIALIZER": f"{APP_DIR}.serializers.auth.TokenSerializer",
   "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5) if env.IS_PRODUCTION else timedelta(days=30),
   "TOKEN_TYPE_CLAIM": "tokenType",
   "USER_ID_CLAIM": "userId",
