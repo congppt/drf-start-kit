@@ -1,6 +1,6 @@
 from django.db import models
 
-from utils.django.models.file import BaseFileAsset, BaseFileAttachment
+from utils.django.models.file import BaseFileAsset, BaseFileAttachment, UploadStatus
 
 class FileAsset(BaseFileAsset):
     pass
