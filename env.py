@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
@@ -29,7 +28,7 @@ MINIO_ACCESS_KEY = os.getenv("MINIO__ACCESS_KEY")
 MINIO_SECRET_KEY = os.getenv("MINIO__SECRET_KEY")
 MINIO_PUBLIC_BUCKET = os.getenv("MINIO__PUBLIC_BUCKET")
 MINIO_PRIVATE_BUCKET = os.getenv("MINIO__PRIVATE_BUCKET")
-MINIO_PUBLIC_URL = os.getenv("MINIO__PUBLIC_URL", f"http://{MINIO_ENDPOINT}/{MINIO_PUBLIC_BUCKET}")
+MINIO_PUBLIC_URL = os.getenv("MINIO__PUBLIC_URL", f"http://{MINIO_ENDPOINT}")
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:

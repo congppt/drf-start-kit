@@ -18,14 +18,14 @@ from django.http import JsonResponse
 from django.urls import include, path
 from django.views.generic import RedirectView
 
-from sample import urls
+from core import urls
 
-def health_check(request):
-    return JsonResponse({'status': 'OK'})
+def health_check(_):
+    return JsonResponse({'success': True})
 
 urlpatterns = [
     path("api/", include(urls)),
-    path('', RedirectView.as_view(url='api/', permanent=True)),
+    path('', RedirectView.as_view(url='api/', permanent=False)),
     path('health/', health_check, name='health_check'),
 ]
 

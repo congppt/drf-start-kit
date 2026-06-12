@@ -74,13 +74,12 @@ class LoggingMiddleware:
     async def __call__(self, request):
         extra = self.__extract_request_info(request)
         start = time.perf_counter()
-        response = await self.get_response(request)
+        try:
+            response = await self.get_response(request)
+        except Exception as exc:
+            logger.opt(exception=exc).bind(extra=extra).error(exc)
+            raise
         process_duration = time.perf_counter() - start
         extra["duration"] = process_duration
         logger.info("", extra=extra)
         return response
-
-    def process_exception(self, request, exception):
-        extra = self.__extract_request_info(request)
-        logger.opt(exception=exception).bind(extra=extra).error(exception)
-        return None

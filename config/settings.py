@@ -22,8 +22,6 @@ import env
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-APP_DIR = "sample"
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
@@ -51,7 +49,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'django_filters',
-    APP_DIR,
+    'core',
     'huey.contrib.djhuey',
     'drf_spectacular',
     'drf_spectacular_sidecar',
@@ -76,7 +74,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
-    "DEFAULT_PAGINATION_CLASS": "utils.rest_framework.pagination.SafeLimitOffsetPagination",
+    "DEFAULT_PAGINATION_CLASS": "core.pagination.Max100LimitOffsetPagination",
     "PAGE_SIZE": 10,
 }
 
@@ -92,7 +90,7 @@ JSON_CAMEL_CASE = {
 
 custom_middlewares = []
 with suppress(ImportError):
-    BASE_PATH = f'{APP_DIR}.middlewares'
+    BASE_PATH = 'core.middlewares'
     module = importlib.import_module(BASE_PATH)
     custom_middlewares = [f'{BASE_PATH}.{middleware}' for middleware in getattr(module, '__all__', [])]
 
@@ -203,12 +201,13 @@ HUEY = {
 
 
 SIMPLE_JWT = {
-  "TOKEN_OBTAIN_SERIALIZER": f"{APP_DIR}.serializers.auth.TokenSerializer",
+  "TOKEN_OBTAIN_SERIALIZER": "core.serializers.auth.TokenSerializer",
   "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5) if env.IS_PRODUCTION else timedelta(days=30),
   "TOKEN_TYPE_CLAIM": "tokenType",
   "USER_ID_CLAIM": "userId",
 }
 
+AUTH_USER_MODEL = 'core.User'
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
