@@ -9,13 +9,14 @@ from rest_framework import serializers
 from utils.minio import minio
 from .. import models
 from .. import validators
+from .common import ExcludeDeleteModelSerializer
 from .group import GroupSerializer
 
 
 AVATAR_FIELD_NAME = models.User.AVATAR_FIELD_NAME
 AVATAR_IS_PUBLIC = models.User.AVATAR_IS_PUBLIC
 
-class UserSerializer(serializers.ModelSerializer):
+class UserSerializer(ExcludeDeleteModelSerializer):
     avatar_url = serializers.SerializerMethodField()
     groups = GroupSerializer(many=True, read_only=True)
     class Meta:

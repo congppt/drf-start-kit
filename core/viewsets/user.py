@@ -28,7 +28,7 @@ class UserViewSet(
     queryset = models.User.objects.prefetch_related('attachments__file').all()
     permission_classes = [permissions.DjangoModelPermissions]
     filterset_class = UserFilter
-    pagination_class = pagination.factory.limit_offset_class(maximum_limit=100)
+    pagination_class = pagination.factory.limit_offset_class(maximum_limit=200)
 
     def get_serializer_class(self):
         match self.action:

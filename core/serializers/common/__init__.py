@@ -1,7 +1,7 @@
-from .audit import AuditableModelSerializer, ExcludeDeleteFieldsSerializer, ExcludeAuditFieldsSerializer
+from .audit import AuditableModelSerializer, ExcludeDeleteModelSerializer, ExcludeAuditableModelSerializer
 
 __all__ = [
     AuditableModelSerializer,
-    ExcludeDeleteFieldsSerializer,
-    ExcludeAuditFieldsSerializer,
+    ExcludeDeleteModelSerializer,
+    ExcludeAuditableModelSerializer,
 ]

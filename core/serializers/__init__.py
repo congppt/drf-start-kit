@@ -1,6 +1,6 @@
 from rest_framework.serializers import Serializer, ModelSerializer
 
-from .common import AuditableModelSerializer, ExcludeDeleteFieldsSerializer, ExcludeAuditFieldsSerializer
+from .common import AuditableModelSerializer, ExcludeDeleteModelSerializer, ExcludeAuditableModelSerializer
 from .group import GroupSerializer
 from .permission import PermissionSerializer
 from .user import (
@@ -20,8 +20,8 @@ __all__ = [
     ModelSerializer,
     # Auditable Model Based Serializers
     AuditableModelSerializer,
-    ExcludeDeleteFieldsSerializer,
-    ExcludeAuditFieldsSerializer,
+    ExcludeDeleteModelSerializer,
+    ExcludeAuditableModelSerializer,
     #
     GroupSerializer,
     # 

@@ -10,7 +10,7 @@ from .. import permissions
 
 class PermissionViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     queryset = models.Permission.objects.select_related('content_type').all()
-    permission_classes = [permissions.DjangoModelPermissions]
+    permission_classes = [permissions.factory.permissions_class('auth.view_group')]
     serializer_class = serializers.PermissionSerializer
     pagination_class = None
 
@@ -27,4 +27,8 @@ class PermissionViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     ),
 )
 class GroupPermissionViewSet(NestedViewSetMixin, PermissionViewSet):
+    pass
+
+class UserPermissionViewSet(NestedViewSetMixin, PermissionViewSet):
+    permission_classes = [permissions.IsAuthenticated]
     pass

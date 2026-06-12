@@ -74,7 +74,7 @@ class AuditableModelSerializer(serializers.ModelSerializer):
         return fields
 
 
-class ExcludeDeleteFieldsSerializer(AuditableModelSerializer):
+class ExcludeDeleteModelSerializer(AuditableModelSerializer):
     """
     Excludes soft-delete fields from model serializer output.
     """
@@ -84,7 +84,7 @@ class ExcludeDeleteFieldsSerializer(AuditableModelSerializer):
             return super().get_field_names(declared_fields, info)
 
 
-class ExcludeAuditFieldsSerializer(ExcludeDeleteFieldsSerializer):
+class ExcludeAuditableModelSerializer(ExcludeDeleteModelSerializer):
     """
     Excludes audit and soft-delete fields from model serializer output.
     """
