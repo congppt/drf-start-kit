@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'django_filters',
     'core',
     'huey.contrib.djhuey',
@@ -201,10 +202,13 @@ HUEY = {
 
 
 SIMPLE_JWT = {
-  "TOKEN_OBTAIN_SERIALIZER": "core.serializers.auth.TokenSerializer",
-  "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5) if env.IS_PRODUCTION else timedelta(days=30),
-  "TOKEN_TYPE_CLAIM": "tokenType",
-  "USER_ID_CLAIM": "userId",
+    "TOKEN_OBTAIN_SERIALIZER": "core.serializers.auth.TokenSerializer",
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5) if env.IS_PRODUCTION else timedelta(days=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7) if env.IS_PRODUCTION else timedelta(days=30),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "TOKEN_TYPE_CLAIM": "tokenType",
+    "USER_ID_CLAIM": "userId",
 }
 
 AUTH_USER_MODEL = 'core.User'

@@ -1,4 +1,4 @@
-x-app-common: &app-common
+x-app-build: &app-build
   build:
     context: .
   env_file:
@@ -7,8 +7,14 @@ x-app-common: &app-common
     DB_URL: postgresql://postgres:postgres@db:5432/postgres
     REDIS_URL: redis://redis:6379
     MINIO__ENDPOINT: minio:9000
-    MINIO__PUBLIC_URL: http://localhost:9000
+    MINIO__ACCESS_KEY: minioadmin
+    MINIO__SECRET_KEY: minioadmin
+    MINIO__PUBLIC_BUCKET: public
+    MINIO__PRIVATE_BUCKET: private
     GUNICORN_WORKERS: ${GUNICORN_WORKERS:-4}
+
+x-app-common: &app-common
+  <<: *app-build
   volumes:
     - ./logs:/dist/logs
   depends_on:
@@ -18,9 +24,19 @@ x-app-common: &app-common
       condition: service_healthy
     minio-init:
       condition: service_completed_successfully
+    migrate:
+      condition: service_completed_successfully
   restart: unless-stopped
 
 services:
+  migrate:
+    <<: *app-build
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   server:
     <<: *app-common
     command:
@@ -37,7 +53,7 @@ services:
     ports:
       - 8000:8000
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
       interval: 60s
       timeout: 10s
       retries: 3
