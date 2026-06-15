@@ -36,3 +36,7 @@ if not SECRET_KEY:
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",") if not IS_LOCAL else []
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if not IS_LOCAL else []
+
+HUEY_WORKERS = int(os.getenv("HUEY_WORKERS", "6"))
+if HUEY_WORKERS < 1:
+    raise EnvironmentError("HUEY_WORKERS must be at least 1")

@@ -28,8 +28,13 @@ from .common import (
     IPv4OrIPv6Validator,
     SlugValidator,
     UnicodeSlugValidator,
+    PhoneNumberValidator,
+    HexColorValidator,
+    FileSizeValidator,
     ImageFileExtensionValidator,
     ImageFileNameValidator,
+    DocumentFileNameValidator,
+    JSONSchemaValidator,
 )
 
 __all__ = [
@@ -60,7 +65,12 @@ __all__ = [
     IPv4OrIPv6Validator,
     SlugValidator,
     UnicodeSlugValidator,
+    PhoneNumberValidator,
+    HexColorValidator,
+    FileSizeValidator,
     ImageFileExtensionValidator,
     ImageFileNameValidator,
+    DocumentFileNameValidator,
+    JSONSchemaValidator,
     #
 ]

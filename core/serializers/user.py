@@ -101,7 +101,7 @@ class UserAvatarUploadUrlSerializer(serializers.Serializer):
     )
     file_size = serializers.IntegerField(
         write_only=True,
-        validators=[validators.MinValueValidator(1), validators.MaxValueValidator(settings.FILE_UPLOAD_MAX_MEMORY_SIZE)],
+        validators=[validators.FileSizeValidator()],
     )
 
     upload_url = serializers.CharField(read_only=True)

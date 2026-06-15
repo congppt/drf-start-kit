@@ -12,6 +12,7 @@ x-app-build: &app-build
     MINIO__PUBLIC_BUCKET: public
     MINIO__PRIVATE_BUCKET: private
     GUNICORN_WORKERS: ${GUNICORN_WORKERS:-4}
+    HUEY_WORKERS: ${HUEY_WORKERS:-6}
 
 x-app-common: &app-common
   <<: *app-build

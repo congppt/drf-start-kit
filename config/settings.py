@@ -188,7 +188,7 @@ HUEY = {
     #     timeout=30,
     # ),
     "consumer": {
-        "workers": 10,
+        "workers": env.HUEY_WORKERS,
         "worker_type": "thread",
         "initial_delay": 0.1,  # Smallest polling interval, same as -d.
         "backoff": 1.15,  # Exponential backoff using this rate, -b.

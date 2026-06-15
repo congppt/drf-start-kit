@@ -2,7 +2,123 @@
 
 A starter kit for building APIs with Django REST Framework. It provides a ready-to-extend project layout with JWT authentication, model permissions, filtering, pagination, auditable models, reusable validators, background jobs, caching helpers, OpenAPI documentation, and MinIO object storage integration.
 
-The default API is exposed under `/api/`. Swagger UI is available at `/api/schema/swagger/`.
+| Resource | URL |
+|----------|-----|
+| API root | `/api/` |
+| Swagger UI | `/api/schema/swagger/` |
+| Health check | `/api/health/` |
+| JWT obtain | `POST /api/token/` |
+| JWT refresh | `POST /api/token/refresh/` |
+| JWT logout | `POST /api/token/logout/` |
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [Authentication](#authentication)
+- [Project Structure](#project-structure)
+- [Coding Conventions](#coding-conventions)
+- [Creating a Complete Viewset](#creating-a-complete-viewset)
+- [Auditable Models and Serializers](#auditable-models-and-serializers)
+- [DRF Reference](#drf-reference)
+- [API Call Flow](#api-call-flow)
+- [Integrations](#integrations)
+- [Operations](#operations)
+
+## Quick Start
+
+**Prerequisites:** Python 3.14+, Docker (optional), Postgres, Redis, and MinIO for full local parity with production.
+
+### Docker (recommended)
+
+Starts the app, Huey worker, Postgres, Redis, and MinIO. Migrations run automatically via the `migrate` service.
+
+```bash
+# create .env — see Configuration
+docker compose up --build
+```
+
+Open Swagger at [http://localhost:8000/api/schema/swagger/](http://localhost:8000/api/schema/swagger/).
+
+### Local Python
+
+```bash
+pip install -r requirements.txt
+# create .env with required variables — see Configuration
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
+```
+
+Run the background worker in a second terminal:
+
+```bash
+python manage.py run_huey
+```
+
+Load bundled fixtures when you add seed data under `core/fixtures/`:
+
+```bash
+python manage.py loaddata core/fixtures/group.json core/fixtures/user.json
+```
+
+## Configuration
+
+Settings are loaded from environment variables via `env.py` (uses `python-dotenv`). Docker Compose reads a `.env` file at the project root.
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `DB_URL` | yes | Postgres URL, e.g. `postgresql://user:pass@localhost:5432/dbname` |
+| `SECRET_KEY` | yes | Django secret key |
+| `ENV` | no | `LOCAL` (default) or `PRODUCTION` |
+| `REDIS_URL` | production | Required when `ENV=PRODUCTION`; used for caching |
+| `MINIO__ENDPOINT` | for file features | Host and port, e.g. `localhost:9000` |
+| `MINIO__ACCESS_KEY` | for file features | MinIO access key |
+| `MINIO__SECRET_KEY` | for file features | MinIO secret key |
+| `MINIO__PUBLIC_BUCKET` | for file features | Public bucket name |
+| `MINIO__PRIVATE_BUCKET` | for file features | Private bucket name |
+| `MINIO__PUBLIC_URL` | no | Public base URL; defaults to `http://{MINIO__ENDPOINT}` |
+| `ALLOWED_HOSTS` | production | Comma-separated hosts |
+| `ALLOWED_ORIGINS` | production | Comma-separated CORS origins |
+| `HUEY_WORKERS` | no | Huey consumer thread count (default `6`) |
+
+Example `.env` for local development alongside `docker compose`:
+
+```env
+ENV=LOCAL
+DB_URL=postgresql://postgres:postgres@localhost:5432/postgres
+SECRET_KEY=change-me-in-production
+REDIS_URL=redis://localhost:6379
+MINIO__ENDPOINT=localhost:9000
+MINIO__ACCESS_KEY=minioadmin
+MINIO__SECRET_KEY=minioadmin
+MINIO__PUBLIC_BUCKET=public
+MINIO__PRIVATE_BUCKET=private
+```
+
+Name service-specific variables with double underscores (`MINIO__*`). Keep shared settings simple (`DB_URL`, `SECRET_KEY`, `REDIS_URL`).
+
+## Authentication
+
+JWT auth uses `rest_framework_simplejwt` with token blacklist support. Token obtain and refresh endpoints are throttled to `5/minute` per IP.
+
+**Obtain tokens** — `POST /api/token/` with JSON body (camelCase keys accepted):
+
+```json
+{ "username": "admin", "password": "..." }
+```
+
+**Refresh** — `POST /api/token/refresh/` with `{ "refresh": "..." }`.
+
+**Logout** — `POST /api/token/logout/` with `{ "refresh": "..." }` to blacklist the refresh token.
+
+Token payload claims are camelized to match API JSON (`core/serializers/auth.py`). Send the access token on protected requests:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+Protected viewsets default to `JWTAuthentication`. Use `permission_classes = [permissions.IsAuthenticated]` or `DjangoModelPermissions` on viewsets as needed.
 
 ## Project Structure
 
@@ -12,12 +128,13 @@ core/                   Main application package
   models/               Domain models and shared model base classes
   serializers/          DRF serializers grouped by resource
   viewsets/             DRF viewsets and action routing
-  views/                URL registration and non-viewset endpoints
+  views/                URL registration (auth, health, routers)
   permissions/          Permission exports and permission factories
   pagination/           Pagination classes and factories
   mixins/               DRF and auditable model mixins
   validators/           Django, DRF, and project validators
   tasks/                Huey background and periodic tasks
+  fixtures/             Django fixture files for seed data
   migrations/           Django schema migrations
 integrations/           External service clients, for example MinIO
 utils/                  Shared helpers such as cache and logging
@@ -25,89 +142,40 @@ manage.py               Django management entry point
 docker-compose.yml      Local services: app, worker, Postgres, Redis, MinIO
 ```
 
-`core.views.__init__` automatically imports URL modules and collects their `url_patterns`, so adding a new file under `core/views/` can register endpoints without editing a central list.
+`core.views.__init__` automatically imports URL modules and collects their `url_patterns`, so adding a new file under `core/views/` registers endpoints without editing a central list.
 
-## Coding Convention
+Registered URL modules today: `auth`, `health`, `user`, `group`, `permission`.
+
+## Coding Conventions
 
 - Keep each resource split by layer: model in `core/models`, serializer in `core/serializers`, viewset in `core/viewsets`, and URL registration in `core/views`.
-- Prefer DRF `ViewSet`/`GenericViewSet` classes with explicit mixins for the supported actions.
+- Prefer `ModelViewSet` for standard full CRUD. Use `AuditableModelViewSet` when the model extends `AuditableModel`. Use `GenericViewSet` with explicit mixins only when an endpoint supports a subset of actions (for example list-only) or omits standard mixins in favor of custom `@action` handlers (for example `UserViewSet`).
 - Put request validation in serializers and reusable field validation in `core/validators`.
-- Prefer explicit `Meta.fields` in serializers so the API contract is easy to review. When using `Meta.exclude` or inherited serializers for auditable models, inherit from the common serializer bases in `core.serializers.common` instead of repeating audit or soft-delete `exclude` and `read_only_fields` definitions.
+- Prefer explicit `Meta.fields` in serializers so the API contract is easy to review. For auditable models, inherit from bases in `core.serializers.common` instead of repeating audit `exclude` and `read_only_fields`.
 - Use `get_serializer_class()` when different actions need different read/write serializers.
-- Pass `performed_by=request.user` when creating, updating, or deleting auditable models.
+- Pass `performed_by=request.user` when creating, updating, or deleting auditable models (see [Auditable Models and Serializers](#auditable-models-and-serializers)).
 - Use `select_related()` and `prefetch_related()` on viewset querysets when serializers access related objects.
 - APIs use camelCase JSON through `djangorestframework-camel-case`; Python code stays snake_case.
-- Group imports in this order: standard library, third-party packages, then local project imports. Prefer package-level relative imports inside `core`, for example `from .. import models`, `serializers`, `permissions`, `pagination`, and `mixins`.
-- Name environment variables in uppercase snake case. Use double underscores to namespace service-specific settings, for example `MINIO__ENDPOINT`, `MINIO__ACCESS_KEY`, `MINIO__PUBLIC_BUCKET`; keep shared settings simple, for example `ENV`, `DB_URL`, `REDIS_URL`, `SECRET_KEY`, `ALLOWED_HOSTS`.
+- Import through `core` package modules that re-export shared symbols instead of pulling the same names from upstream libraries. Inside `core`, use relative package imports and access symbols on those namespaces — for example `from .. import models`, `serializers`, `validators`, `permissions`, `pagination`, and `mixins`, then `permissions.DjangoModelPermissions`, `validators.MinValueValidator`, `serializers.ModelSerializer`. The package `__init__.py` files own the re-exports from Django, DRF, and project code; resource modules (viewsets, serializers, and so on) should not import re-exported symbols directly from `rest_framework.*` or `django.core.validators` when they are available on a `core` package.
+- Group imports in this order: standard library, third-party packages (only symbols not re-exported by `core`, such as `rest_framework.status` or `django.db.transaction`), then local `core` package imports.
 
-## Auditable Models
-
-`core.models.common.AuditableModel` adds audit fields and soft delete behavior:
-
-- `created`, `created_by`
-- `updated`, `updated_by`
-- `is_deleted`, `deleted`, `deleted_by`
-
-The default `objects` manager hides soft-deleted rows. Use `all_objects` when an admin or maintenance flow must include deleted records.
-
-Auditable writes require an actor:
-
-```python
-serializer.save(performed_by=request.user)
-instance.delete(performed_by=request.user)
-Model.objects.create(..., performed_by=request.user)
-Model.objects.filter(...).update(..., performed_by=request.user)
-```
-
-`CreateAuditableModelMixin`, `UpdateAuditableModelMixin`, `DestroyAuditableModelMixin`, and `AuditableModelViewSet` wire this convention into DRF viewsets.
-
-## Common Auditable Serializers
-
-`core.serializers.common` provides model serializer bases for auditable models:
-
-- `AuditableModelSerializer` keeps audit fields available but marks them read-only.
-- `ExcludeDeleteModelSerializer` hides soft-delete fields: `is_deleted`, `deleted`, and `deleted_by`.
-- `ExcludeAuditableModelSerializer` hides both audit fields and soft-delete fields.
-
-These bases reduce repeated `Meta.exclude` and `Meta.read_only_fields` definitions across inherited serializers. They combine their audit-related defaults with the serializer's own `Meta.exclude` and `Meta.read_only_fields` while preserving DRF's normal `fields` and `exclude` behavior.
-
-Prefer defining `Meta.fields` explicitly for most serializers because it makes the public API shape clear. Use these bases when a serializer still needs inherited audit handling, especially when `Meta.exclude` is used. For example, `UserSerializer` inherits from `ExcludeDeleteModelSerializer` so API responses do not expose soft-delete metadata.
-
-## API Call Flow
-
-For a typical DRF viewset request:
-
-1. Django routes `/api/...` through `config.urls` into `core.urls`, then into the resource URL module in `core/views`.
-2. DRF resolves the viewset action from the HTTP method and route, for example `list`, `retrieve`, `create`, `update`, or a custom `@action`.
-3. Authentication runs first. This starter kit uses Simple JWT via `JWTAuthentication`.
-4. Permission classes run next. Examples include `DjangoModelPermissions`, `IsAuthenticated`, and custom classes from `permissions.factory.permissions_class(...)`.
-5. The viewset starts from `get_queryset()` or the `queryset` attribute. This is where related objects should be optimized with `select_related()` or `prefetch_related()`.
-6. For detail routes, `get_object()` applies the queryset, URL lookup, object permission checks, and returns the instance.
-7. Filter backends apply `filterset_class` rules for list endpoints. The global default is `DjangoFilterBackend`.
-8. Pagination is applied for list responses when the viewset has a pagination class.
-9. `get_serializer_class()` chooses the serializer for the current action.
-10. For write actions, the serializer receives request data, runs field validators, `validate_<field>()`, and `validate()`.
-11. After `serializer.is_valid(raise_exception=True)`, the serializer `create()` or `update()` method persists changes.
-12. `perform_create()` or `perform_update()` passes `performed_by=request.user` for auditable writes.
-13. The response serializer data is rendered as camelCase JSON.
-
-`UserViewSet` is the main example: it uses model permissions, a `UserFilter`, limit-offset pagination, action-specific serializers, custom self-service actions, password validation, avatar upload URL generation, and MinIO-backed file verification.
-
-## Creating A Complete Viewset
+## Creating a Complete Viewset
 
 When adding a new API resource, create the viewset as a thin orchestration layer and keep business validation in serializers or domain helpers.
 
 1. Define the model and manager behavior in `core/models`. Use `AuditableModel` when the resource needs actor tracking and soft delete.
-2. Add serializers in `core/serializers`: one read serializer, plus separate create/update/action serializers when write inputs differ from response shape. Prefer explicit `Meta.fields`; for auditable models that need shared audit handling, choose `AuditableModelSerializer`, `ExcludeDeleteModelSerializer`, or `ExcludeAuditableModelSerializer` as the base class.
+2. Add serializers in `core/serializers`: one read serializer, plus separate create/update/action serializers when write inputs differ from response shape.
 3. Add reusable field validators in `core/validators` and serializer-level validation for checks that need request context, related models, or external services.
 4. Add a `FilterSet` beside the viewset when list endpoints need query filters.
-5. Create the viewset in `core/viewsets` using only the required DRF mixins, or `AuditableModelViewSet` for full CRUD on auditable models.
+5. Create the viewset in `core/viewsets`: `ModelViewSet` or `AuditableModelViewSet` for full CRUD; otherwise `GenericViewSet` with only the mixins you need.
 6. Set `queryset`, `permission_classes`, `serializer_class` or `get_serializer_class()`, `filterset_class`, and `pagination_class` explicitly.
 7. Optimize the queryset for serializer access with `select_related()` and `prefetch_related()`.
 8. For auditable writes, implement `perform_create()`, `perform_update()`, and `perform_destroy()` or use the auditable mixins.
 9. Add custom operations with `@action`, including method, `detail`, `url_path`, action-specific permissions, validation, and response status.
 10. Register the route in a file under `core/views` so `core.views.__init__` can collect it into `core.urls`.
-11. Verify the endpoint in Swagger at `/api/schema/swagger/` and add tests when behavior includes permissions, filters, validation, or side effects.
+11. Verify the endpoint in Swagger and add tests when behavior includes permissions, filters, validation, or side effects.
+
+`UserViewSet` is the main reference: model permissions, `UserFilter`, limit-offset pagination, action-specific serializers, self-service endpoints, password validation, avatar presigned upload URLs, and MinIO-backed file verification.
 
 Minimal pattern:
 
@@ -140,9 +208,54 @@ class ExampleViewSet(
         serializer.save(performed_by=self.request.user)
 ```
 
-## Permissions
+## Auditable Models and Serializers
 
-Permissions are exported from `core.permissions` so viewsets can import from one project namespace:
+### Models
+
+`core.models.common.AuditableModel` adds audit fields and soft delete behavior:
+
+- `created`, `created_by`
+- `updated`, `updated_by`
+- `is_deleted`, `deleted`, `deleted_by`
+
+The default `objects` manager hides soft-deleted rows. Use `all_objects` when an admin or maintenance flow must include deleted records.
+
+Auditable writes require an actor:
+
+```python
+serializer.save(performed_by=request.user)
+instance.delete(performed_by=request.user)
+Model.objects.create(..., performed_by=request.user)
+Model.objects.filter(...).update(..., performed_by=request.user)
+```
+
+`AuditableModel.save()` (`core/models/common/audit.py`) requires `performed_by`, stamps `created_by` on insert and `updated_by` on update, then delegates to Django's `Model.save()`.
+
+Custom serializer `create()` / `update()` methods must `pop('performed_by')` from `validated_data` and forward it to `instance.save(performed_by=...)` or `Model.objects.create(..., performed_by=...)`.
+
+### Viewset mixins
+
+`CreateAuditableModelMixin`, `UpdateAuditableModelMixin`, and `DestroyAuditableModelMixin` call `serializer.save(performed_by=self.request.user)` or `instance.delete(performed_by=self.request.user)`.
+
+Use `AuditableModelViewSet` for full CRUD on auditable models with actor tracking wired in automatically.
+
+### Serializer bases
+
+`core.serializers.common` provides model serializer bases:
+
+| Base | Behavior |
+|------|----------|
+| `AuditableModelSerializer` | Audit fields available but read-only |
+| `ExcludeDeleteModelSerializer` | Hides `is_deleted`, `deleted`, `deleted_by` |
+| `ExcludeAuditableModelSerializer` | Hides all audit and soft-delete fields |
+
+Prefer explicit `Meta.fields` for most serializers. Use these bases when a serializer needs inherited audit handling, especially with `Meta.exclude`. For example, `UserSerializer` inherits from `ExcludeDeleteModelSerializer` so API responses do not expose soft-delete metadata.
+
+## DRF Reference
+
+### Permissions
+
+Exported from `core.permissions`:
 
 ```python
 permission_classes = [permissions.DjangoModelPermissions]
@@ -150,11 +263,11 @@ permission_classes = [permissions.IsAuthenticated]
 permission_classes = [permissions.factory.permissions_class("auth.view_group")]
 ```
 
-Use `DjangoModelPermissions` for model CRUD permissions and `permissions.factory.permissions_class(...)` when an endpoint needs a specific Django permission codename.
+Use `DjangoModelPermissions` for model CRUD permissions and `permissions.factory.permissions_class(...)` for a specific Django permission codename.
 
-## Pagination
+### Pagination
 
-The global default is limit-offset pagination with page size `10` and max limit `100`:
+Global default: limit-offset pagination, page size `10`, max limit `100`.
 
 ```python
 REST_FRAMEWORK = {
@@ -163,7 +276,7 @@ REST_FRAMEWORK = {
 }
 ```
 
-For endpoint-specific limits, use the factory:
+Per-endpoint limits:
 
 ```python
 pagination_class = pagination.factory.limit_offset_class(maximum_limit=200)
@@ -171,93 +284,207 @@ pagination_class = pagination.factory.limit_offset_class(maximum_limit=200)
 
 Set `pagination_class = None` for small fixed lists such as permission metadata.
 
-## Mixins
+### Mixins
 
-`core.mixins` re-exports DRF's common model mixins and adds auditable mixins. Compose only the actions an endpoint supports:
+`core.mixins` re-exports DRF model mixins (`ListModelMixin`, `CreateModelMixin`, etc.) and auditable mixins. Default to `ModelViewSet` or `AuditableModelViewSet` for full CRUD; compose explicit mixins on `GenericViewSet` when you need a subset of actions.
+
+### Validators
+
+Import validators from `core.validators` (inside `core`, `from .. import validators`). Do not import re-exported symbols directly from `django.core.validators` or `rest_framework.validators`.
+
+**Commonly used (Django, re-exported):**
+
+| Validator | Typical use |
+|-----------|-------------|
+| `MinValueValidator` / `MaxValueValidator` | Numeric bounds (integers, decimals) |
+| `MinLengthValidator` / `MaxLengthValidator` | String or list length |
+| `EmailValidator` | Email-shaped strings |
+| `URLValidator` | URL-shaped strings |
+| `RegexValidator` | Custom pattern match |
+| `FileExtensionValidator` | Allowed file extensions |
+| `DecimalValidator` | Decimal max digits / decimal places |
+| `StepValueValidator` | Numeric step (for example multiples of 0.01) |
+| `ProhibitNullCharactersValidator` | Reject `\x00` in strings |
+| `DomainNameValidator` | Domain name format |
+
+**Uniqueness (DRF, re-exported):**
+
+| Validator | Typical use |
+|-----------|-------------|
+| `UniqueValidator` | Field unique within a queryset |
+| `UniqueTogetherValidator` | Composite uniqueness |
+| `UniqueForDateValidator` / `UniqueForMonthValidator` / `UniqueForYearValidator` | Time-scoped uniqueness |
+
+**Project validators (`core.validators.common`):**
+
+| Validator | Typical use |
+|-----------|-------------|
+| `FileSizeValidator` | Byte size bounds; omitted `max_size` uses `settings.FILE_UPLOAD_MAX_MEMORY_SIZE`; `max_size=None` removes the upper bound |
+| `ImageFileNameValidator` | Safe image object names (fixed image extensions) |
+| `DocumentFileNameValidator` | Document names; pass an explicit extension allowlist, e.g. `['pdf', 'docx']` |
+| `ImageFileExtensionValidator` | Uploaded image file extensions |
+| `PhoneNumberValidator` | E.164 phone numbers (`+84901234567`) |
+| `HexColorValidator` | `#fff` or `#1a2b3c` colors |
+| `JSONSchemaValidator` | Dict keys mapped to types and/or nested validators; `strict=True` rejects extra keys |
+| `IntegerValidator` / `IntegerListValidator` | Integer or comma-separated integer lists |
+| `IPv4Validator` / `IPv6Validator` / `IPv4OrIPv6Validator` | IP address format |
+| `SlugValidator` / `UnicodeSlugValidator` | Slug format |
+
+Example on a serializer field:
 
 ```python
-class UserViewSet(
-    mixins.ListModelMixin,
-    mixins.RetrieveModelMixin,
-    mixins.CreateModelMixin,
-    mixins.UpdateModelMixin,
-    viewsets.GenericViewSet,
-):
-    ...
+from .. import validators
+
+file_size = serializers.IntegerField(
+    validators=[validators.FileSizeValidator()],
+)
+file_name = serializers.CharField(validators=[validators.ImageFileNameValidator()])
+document_name = serializers.CharField(
+    validators=[validators.DocumentFileNameValidator(['pdf', 'docx'])],
+)
+
+preferences = serializers.JSONField(
+    validators=[
+        validators.JSONSchemaValidator(
+            {
+                'theme': str,
+                'accentColor': validators.HexColorValidator(),
+                'fontSize': validators.MinValueValidator(8),
+                'notifications': bool,
+            },
+            strict=True,
+        ),
+    ],
+)
 ```
 
-Use `AuditableModelViewSet` when a model supports the full CRUD surface and should automatically record the acting user.
+Use field validators for simple constraints and serializer `validate_*` / `validate()` for checks that need request context, database state, or external services.
 
-## Validators
+## API Call Flow
 
-`core.validators` exposes Django validators, DRF uniqueness validators, and project validators from one namespace. Examples include:
+Every `/api/...` request passes through Django middleware, URL routing, DRF view dispatch, and (for writes) serializer validation before data reaches the ORM. Diagrams render on GitHub, in VS Code/Cursor Markdown preview, and in any tool that supports [Mermaid](https://mermaid.js.org/).
 
-- `ImageFileNameValidator` for safe image object names
-- `ImageFileExtensionValidator` for uploaded image files
-- `IntegerValidator`, `IntegerListValidator`
-- `IPv4Validator`, `IPv6Validator`, `IPv4OrIPv6Validator`
-- `SlugValidator`, `UnicodeSlugValidator`
+For auditable write conventions, see [Auditable Models and Serializers](#auditable-models-and-serializers).
 
-Use serializer field validators for simple constraints and serializer `validate_*` methods for checks that need request context, database state, or external services.
+### Request entry and dispatch
 
-## Background Task Scheduler
+```mermaid
+flowchart TD
+    MW["LoggingMiddleware.__call__<br/>core/middlewares/log.py"]
+    URL["URL resolve → router → ViewSet.as_view<br/>config/urls.py → core/views/"]
+    DISPATCH["APIView.dispatch<br/>rest_framework/views.py"]
+    INIT["initialize_request + initial<br/>JWT auth, permissions, throttles"]
+    HANDLER["Action handler<br/>list / retrieve / create / update / destroy / @action"]
+    RENDER["finalize_response → CamelCaseJSONRenderer"]
 
-Huey is configured in `config.settings` and tasks live in `core/tasks`. Run the worker with:
-
-```bash
-python manage.py run_huey
+    MW --> URL --> DISPATCH --> INIT --> HANDLER --> RENDER
 ```
 
-The included `minio_garbage_collect` task runs daily at midnight and deletes orphaned pending `FileAsset` records and their MinIO objects after `FILE_ORPHANED_INTERVAL`.
+`ViewSetMixin.as_view()` binds HTTP methods to actions (for example `POST /api/users/` → `create`). `APIView.dispatch()` runs `initial()` for authentication and permissions, calls the action handler, then renders camelCase JSON.
 
-With Docker Compose, the `worker` service runs Huey and the `server` service runs Gunicorn:
+### Read actions (`GET`)
 
-```bash
-docker compose up --build
+```mermaid
+flowchart LR
+    subgraph list ["List — GET /api/users/"]
+        L1["filter_queryset(get_queryset())"]
+        L2["paginate_queryset() optional"]
+        L3["get_serializer(many=True)"]
+        L4["Response(serializer.data)"]
+        L1 --> L2 --> L3 --> L4
+    end
+
+    subgraph retrieve ["Retrieve — GET /api/users/{id}/"]
+        R1["get_object()"]
+        R2["get_serializer(instance)"]
+        R3["Response(serializer.data)"]
+        R1 --> R2 --> R3
+    end
 ```
 
-## Migrations
+Use `select_related()` / `prefetch_related()` in `get_queryset()`. List endpoints apply `filterset_class` through `DjangoFilterBackend`.
 
-Create and apply schema migrations with standard Django commands:
+### Write actions — `UserViewSet` examples
 
-```bash
-python manage.py makemigrations
-python manage.py migrate
+Create and update share the same validation pipeline (`is_valid` → `run_validation` → `to_internal_value` → `validate_<field>` → `validate`). They diverge at `Serializer.save()` when an instance already exists.
+
+**Create** — `POST /api/users/`
+
+```mermaid
+flowchart TD
+    subgraph drf ["DRF mixin"]
+        C1["CreateModelMixin.create"]
+        C2["get_serializer(data=request.data)<br/>→ UserCreateSerializer"]
+    end
+
+    subgraph validate ["Serializer validation"]
+        V1["is_valid(raise_exception=True)"]
+        V2["run_validation"]
+        V3["to_internal_value — per field"]
+        V4["validate_<field> optional"]
+        V5["validate(attrs)"]
+        V1 --> V2 --> V3 --> V4 --> V5
+    end
+
+    subgraph persist ["ViewSet → ORM"]
+        P1["perform_create<br/>serializer.save(performed_by=user)"]
+        P2["Serializer.save merges kwargs"]
+        P3["UserCreateSerializer.create"]
+        P4["_UserManager._create_user"]
+        P5["AuditableModel.save"]
+        P6["Model.save → SQL INSERT"]
+        P7["groups.set() M2M"]
+        P1 --> P2 --> P3 --> P4 --> P5 --> P6 --> P7
+    end
+
+    RESP["Response(serializer.data, 201)"]
+
+    C1 --> C2 --> V1
+    V5 --> P1
+    P7 --> RESP
 ```
 
-The Docker Compose `migrate` service runs `python manage.py migrate --noinput` before the app and worker start.
+Notable steps: `perform_create` passes `performed_by`; custom `UserCreateSerializer.create` pops M2M `groups` before `create_user`; `AuditableModel.save` stamps audit fields. Stock `ModelViewSet` serializers (for example `GroupViewSet`) use default `ModelSerializer.create()` → `objects.create(**validated_data)`.
 
-## Data Dump And Load
+**Update** — `PATCH /api/users/{id}/`
 
-Use Django fixtures for portable data snapshots:
+```mermaid
+flowchart TD
+    U1["UpdateModelMixin.update"]
+    U2["get_object()"]
+    U3["get_serializer(instance, data, partial)"]
+    U4["is_valid → run_validation → validate"]
+    U5["perform_update → serializer.save(performed_by=user)"]
+    U6["UserUpdateSerializer.update"]
+    U7["AuditableModel.save → SQL UPDATE"]
+    U8["Response(serializer.data, 200)"]
 
-```bash
-python manage.py dumpdata core --indent 2 > core-fixture.json
-python manage.py loaddata core-fixture.json
+    U1 --> U2 --> U3 --> U4 --> U5 --> U6 --> U7 --> U8
 ```
 
-Useful variants:
+**Destroy** — `DELETE /api/users/{id}/`
 
-```bash
-python manage.py dumpdata core.User --indent 2 > users.json
-python manage.py dumpdata --natural-foreign --natural-primary --indent 2 > data.json
+```mermaid
+flowchart LR
+    D1["DestroyModelMixin.destroy"] --> D2["get_object()"] --> D3["perform_destroy(instance)"]
+    D3 --> D4["instance.delete(performed_by=user)<br/>soft delete"]
 ```
 
-Avoid dumping secrets, production credentials, tokens, or sensitive user data.
+Use `DestroyAuditableModelMixin` or `AuditableModelViewSet` for soft delete on auditable models.
 
-## Caching
+### Custom `@action` handlers
 
-Django cache is configured as dummy cache locally and Redis in production. `utils.cache` provides:
+Custom actions (for example `UserViewSet.update_self`) call the serializer steps explicitly:
 
-- `@cached(base_key, ttl, vary_on_args=True)` to cache function results.
-- `clear_cache(base_key)` to invalidate all variants for a base key by bumping its version.
-- `delete_cache(...)` to delete one exact cached call.
+`get_serializer(instance, data=...)` → `is_valid(raise_exception=True)` → `save(performed_by=request.user)` → `Response(...)`.
 
-Cache keys are stable across equivalent positional and keyword calls by binding arguments to the function signature before hashing.
+`serializer.save(**extra)` merges `extra` into `validated_data` before `create()` or `update()`.
 
-## Object Storage
+## Integrations
 
-`integrations.minio` wraps the MinIO client and supports:
+### Object storage
+
+`integrations.minio` wraps the MinIO client:
 
 - direct upload and download
 - object stat checks
@@ -266,20 +493,46 @@ Cache keys are stable across equivalent positional and keyword calls by binding 
 - public object URLs
 - bulk delete
 
-The avatar flow demonstrates the pattern: create a pending `FileAsset`, return a presigned upload URL, validate the uploaded object with MinIO, attach it to the user, and mark the file as ready.
+The avatar flow in `UserViewSet` demonstrates the pattern: create a pending `FileAsset`, return a presigned upload URL, validate the uploaded object with MinIO, attach it to the user, and mark the file as ready.
 
-## Common Commands
+### Caching
+
+Django cache is dummy cache locally and Redis in production. `utils.cache` provides:
+
+- `@cached(base_key, ttl, vary_on_args=True)` to cache function results
+- `clear_cache(base_key)` to invalidate all variants for a base key
+- `delete_cache(...)` to delete one exact cached call
+
+Cache keys are stable across equivalent positional and keyword calls by binding arguments to the function signature before hashing.
+
+### Background tasks
+
+Huey is configured in `config.settings`; tasks live in `core/tasks`. Consumer worker count is set by `HUEY_WORKERS` (default `6`) in `HUEY["consumer"]["workers"]`.
+
+The `minio_garbage_collect` task runs daily at midnight and deletes orphaned pending `FileAsset` records and their MinIO objects after `FILE_ORPHANED_INTERVAL`.
+
+Docker Compose runs the worker via the `worker` service (`python manage.py run_huey`). Run it manually when not using Docker:
 
 ```bash
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py createsuperuser
-python manage.py runserver
 python manage.py run_huey
 ```
 
-For local infrastructure:
+## Operations
+
+### Migrations
 
 ```bash
-docker compose up --build
+python manage.py makemigrations
+python manage.py migrate
 ```
+
+Docker Compose runs `migrate --noinput` automatically before the app and worker start.
+
+### Fixtures
+
+```bash
+python manage.py loaddata core/fixtures/group.json core/fixtures/user.json
+python manage.py dumpdata core --indent 2 > core-fixture.json
+```
+
+Avoid dumping secrets, production credentials, tokens, or sensitive user data.
