@@ -1,4 +1,7 @@
 import mimetypes
+import os
+import certifi
+import urllib3
 from datetime import timedelta
 from typing import Iterable
 from urllib.parse import quote
@@ -7,6 +10,7 @@ from uuid import UUID
 from django.core.files import File
 from minio import Minio, S3Error
 from minio.deleteobjects import DeleteObject
+
 
 import env
 
@@ -18,10 +22,24 @@ class MinioClient:
     @property
     def client(self) -> Minio:
         if self.__client is None:
+            connect_timeout = timedelta(seconds=10).seconds
+            read_timeout = timedelta(minutes=5).seconds
+            http_client = urllib3.PoolManager(
+                timeout=urllib3.Timeout(connect=connect_timeout, read=read_timeout),
+                maxsize=10,
+                # cert_reqs='CERT_REQUIRED',
+                # ca_certs=self.__get_config('SSL_CERT_FILE') or certifi.where(),
+                retries=urllib3.Retry(
+                    total=5,
+                    backoff_factor=0.2,
+                    status_forcelist=[500, 502, 503, 504]
+                )
+            )
             self.__client = Minio(
                 endpoint=self.__get_config("MINIO_ENDPOINT"),
                 access_key=self.__get_config("MINIO_ACCESS_KEY"),
                 secret_key=self.__get_config("MINIO_SECRET_KEY"),
+                http_client=http_client,
                 secure=False,
             )
         return self.__client

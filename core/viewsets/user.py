@@ -1,5 +1,5 @@
 import django_filters
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -78,7 +78,7 @@ class UserViewSet(
         serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(performed_by=request.user)
-        return Response()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
         detail=False,
@@ -91,7 +91,7 @@ class UserViewSet(
         serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(performed_by=request.user)
-        return Response()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
         detail=False,
@@ -116,4 +116,4 @@ class UserViewSet(
         serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(performed_by=request.user)
-        return Response()
+        return Response(status=status.HTTP_204_NO_CONTENT)
