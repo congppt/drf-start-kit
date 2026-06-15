@@ -5,11 +5,13 @@ from huey.contrib import djhuey
 from huey import crontab
 
 from .. import models
-from utils.minio import minio
+from integrations.minio import minio
+from utils.log import logger
 
 @djhuey.db_periodic_task(crontab(minute="0", hour="0"))
 @djhuey.lock_task("minio-garbage-collect")
 def minio_garbage_collect():
+    logger.info("Starting minio garbage collection")
     base_qs = models.FileAsset.objects.filter(
         status=models.UploadStatus.PENDING,
         created__lt=timezone.now() - timezone.timedelta(seconds=settings.FILE_ORPHANED_INTERVAL)
@@ -21,4 +23,5 @@ def minio_garbage_collect():
         orphaned_private_file_ids = base_qs.filter(is_public=False).values_list('id', flat=True)
         _ = minio.delete(orphaned_private_file_ids, is_public=False)
         models.FileAsset.objects.filter(id__in=orphaned_private_file_ids).delete()
+    logger.info("Minio garbage collection completed")
     return

@@ -6,7 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
-from utils.minio import minio
+from integrations.minio import minio
 from .. import models
 from .. import validators
 from .common import ExcludeDeleteModelSerializer
