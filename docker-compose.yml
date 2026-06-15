@@ -1,29 +1,50 @@
+x-app-common: &app-common
+  build:
+    context: .
+  env_file:
+    - .env
+  environment:
+    DB_URL: postgresql://postgres:postgres@db:5432/postgres
+    REDIS_URL: redis://redis:6379
+    MINIO__ENDPOINT: minio:9000
+    MINIO__PUBLIC_URL: http://localhost:9000
+    GUNICORN_WORKERS: ${GUNICORN_WORKERS:-4}
+  volumes:
+    - ./logs:/dist/logs
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    minio-init:
+      condition: service_completed_successfully
+  restart: unless-stopped
+
 services:
   server:
-    build:
-      context: .
-    volumes:
-      - ./logs:/dist/logs
-    env_file:
-      - .env
-    environment:
-      DB_URL: postgresql://postgres:postgres@db:5432/postgres
-      REDIS_URL: redis://redis:6379
-      MINIO__ENDPOINT: minio:9000
+    <<: *app-common
+    command:
+      - gunicorn
+      - config.wsgi:application
+      - --bind
+      - 0.0.0.0:8000
+      - --workers
+      - ${GUNICORN_WORKERS:-4}
+      - --timeout
+      - "300"
+      - --graceful-timeout
+      - "300"
     ports:
       - 8000:8000
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 60s
       timeout: 10s
       retries: 3
+
+  worker:
+    <<: *app-common
+    command: ["python", "manage.py", "run_huey"]
 
   db:
     image: postgres:16-alpine

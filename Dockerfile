@@ -47,10 +47,7 @@ USER appuser
 # Copy the source code into the container.
 COPY . .
 
-RUN chmod +x /dist/linux-start.sh
-
 # Expose the port that the application listens on.
 EXPOSE 8000
 
-# Run the application.
-ENTRYPOINT ["/dist/linux-start.sh"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "300", "--graceful-timeout", "300"]
