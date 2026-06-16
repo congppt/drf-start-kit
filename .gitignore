@@ -68,7 +68,7 @@ coverage.xml
 .pytest_cache/
 cover/
 
-# Translations
+# Translations — commit .po only; compile .mo at build/dev via compilemessages
 *.mo
 
 # Django stuff:

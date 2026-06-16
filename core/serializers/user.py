@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.auth import password_validation
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from integrations.minio import minio
@@ -86,12 +87,12 @@ class PasswordSelfChangeSerializer(PasswordChangeSerializer):
     
     def validate_old_password(self, value: str):
         if not self.context['request'].user.check_password(value):
-            raise serializers.ValidationError('Old password is incorrect')
+            raise serializers.ValidationError(_('The current password is incorrect.'))
         return value
 
     def validate(self, attrs: dict):
         if attrs['new_password'] == attrs['old_password']:
-            raise serializers.ValidationError('New password cannot be the same as the old password')
+            raise serializers.ValidationError(_('The new password must be different from the current password.'))
         return attrs
 
 class UserAvatarUploadUrlSerializer(serializers.Serializer):
@@ -136,20 +137,20 @@ class UserAvatarSelfUpdateSerializer(serializers.Serializer):
     def validate_file_id(self, value: models.FileAsset):
         request = self.context['request']
         if value.owner != request.user.username:
-            raise serializers.ValidationError('File does not belong to the current user.')
+            raise serializers.ValidationError(_('Please choose a file that you uploaded.'))
         attachment = getattr(value, 'attachment', None)
         if attachment and (
             attachment.content_object != request.user
             or attachment.field_name != AVATAR_FIELD_NAME
         ):
-            raise serializers.ValidationError('File is already attached to another entity.')
+            raise serializers.ValidationError(_('This file is already attached to another record.'))
         file_stat = minio.stat(value.id, is_public=AVATAR_IS_PUBLIC)
         if not file_stat:
-            raise serializers.ValidationError('File does not exist.')
+            raise serializers.ValidationError(_('We could not find the uploaded file.'))
         if file_stat.size != value.size:
-            raise serializers.ValidationError('File size does not match.')
+            raise serializers.ValidationError(_('The uploaded file is invalid. Please upload it again.'))
         if file_stat.content_type != value.content_type:
-            raise serializers.ValidationError('File content type does not match.')
+            raise serializers.ValidationError(_('This file type is not supported. Please upload another file.'))
         return value
 
     def update(self, instance: models.User, validated_data: dict):

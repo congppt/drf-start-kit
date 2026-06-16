@@ -38,14 +38,18 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=bind,source=requirements.txt,target=requirements.txt \
     python -m pip install -r requirements.txt
 
-# Install curl to check health of the application
-RUN apt-get update && apt-get install -y curl
-
-# Switch to the non-privileged user to run the application.
-USER appuser
+# Install curl for health checks and gettext for Django message compilation.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl gettext \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy the source code into the container.
 COPY . .
+
+RUN django-admin compilemessages
+
+# Switch to the non-privileged user to run the application.
+USER appuser
 
 # Expose the port that the application listens on.
 EXPOSE 8000

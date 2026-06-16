@@ -16,9 +16,9 @@ UNSET_MAX_SIZE = _UnsetMaxSizeType()
 
 @deconstructible
 class FileSizeValidator:
-    message = _('File size must be between %(min_size)s and %(max_size)s bytes.')
-    min_message = _('File size must be at least %(min_size)s bytes.')
-    max_message = _('File size must be at most %(max_size)s bytes.')
+    message = _('The selected file is invalid.')
+    min_message = _('The selected file is invalid.')
+    max_message = _('The selected file is too large.')
 
     def __init__(self, min_size: int = 1, max_size: int | None = UNSET_MAX_SIZE):
         self.min_size = min_size
@@ -31,7 +31,7 @@ class FileSizeValidator:
 
     def __call__(self, value: int):
         if isinstance(value, bool) or not isinstance(value, int):
-            raise ValidationError(_('Expected an integer byte size.'), code='invalid')
+            raise ValidationError(_('The selected file is invalid.'), code='invalid')
 
         if value < self.min_size:
             raise ValidationError(
@@ -78,7 +78,7 @@ class ImageFileExtensionValidator:
 
 
 class ImageFileNameValidator(RegexValidator):
-    message = _('Invalid file name')
+    message = _('This image file is not supported. Please upload another image.')
     regex = r'^[^/\\?%*:|"<>\x00]+$'
     max_length = 255
     allowed_extensions = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'}
@@ -114,7 +114,7 @@ class DocumentFileNameValidator(RegexValidator):
     (for example ``DocumentFileNameValidator(['pdf', 'docx'])``).
     """
 
-    message = _('Invalid document file name')
+    message = _('This document file is not supported. Please upload another document.')
     regex = r'^[^/\\?%*:|"<>\x00]+$'
 
     def __init__(self, allowed_extensions, *, max_length: int = 255):

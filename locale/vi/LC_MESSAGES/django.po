@@ -1,0 +1,208 @@
+# Vietnamese translations for DRF Start Kit.
+# Copyright (C) 2026
+# This file is distributed under the same license as the DRF Start Kit project.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: DRF Start Kit\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-16 12:34+0700\n"
+"PO-Revision-Date: 2026-06-16 11:31+0700\n"
+"Last-Translator: \n"
+"Language-Team: Vietnamese\n"
+"Language: vi\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: .\config\settings.py:249
+msgid "English"
+msgstr "Tiếng Anh"
+
+#: .\config\settings.py:250
+msgid "Vietnamese"
+msgstr "Tiếng Việt"
+
+#: .\core\serializers\user.py:90
+msgid "The current password is incorrect."
+msgstr "Mật khẩu hiện tại không chính xác."
+
+#: .\core\serializers\user.py:95
+msgid "The new password must be different from the current password."
+msgstr "Mật khẩu mới phải khác mật khẩu hiện tại."
+
+#: .\core\serializers\user.py:140
+msgid "Please choose a file that you uploaded."
+msgstr "Vui lòng chọn tệp bạn đã tải lên."
+
+#: .\core\serializers\user.py:146
+msgid "This file is already attached to another record."
+msgstr "Tệp này đã được gắn với một bản ghi khác."
+
+#: .\core\serializers\user.py:149
+msgid "We could not find the uploaded file."
+msgstr "Không tìm thấy tệp đã tải lên."
+
+#: .\core\serializers\user.py:151
+msgid "The uploaded file is invalid. Please upload it again."
+msgstr "Tệp đã tải lên không hợp lệ. Vui lòng tải lại tệp."
+
+#: .\core\serializers\user.py:153
+msgid "This file type is not supported. Please upload another file."
+msgstr "Loại tệp này không được hỗ trợ. Vui lòng tải lên tệp khác."
+
+#: .\core\validators\common\file.py:19 .\core\validators\common\file.py:20
+#: .\core\validators\common\file.py:34
+msgid "The selected file is invalid."
+msgstr "Tệp đã chọn không hợp lệ."
+
+#: .\core\validators\common\file.py:21
+msgid "The selected file is too large."
+msgstr "Tệp đã chọn quá lớn."
+
+#: .\core\validators\common\file.py:81
+msgid "This image file is not supported. Please upload another image."
+msgstr "Tệp ảnh này không được hỗ trợ. Vui lòng tải lên ảnh khác."
+
+#: .\core\validators\common\file.py:117
+msgid "This document file is not supported. Please upload another document."
+msgstr "Tệp tài liệu này không được hỗ trợ. Vui lòng tải lên tài liệu khác."
+
+#: .\core\validators\common\json.py:16
+#, python-format
+msgid "Enter a valid value for \"%(key)s\"."
+msgstr "Vui lòng nhập giá trị hợp lệ cho \"%(key)s\"."
+
+#: .\core\validators\common\json.py:17
+#, python-format
+msgid "Use a %(expected)s value. Received %(actual)s."
+msgstr ""
+"Vui lòng dùng giá trị kiểu %(expected)s. Giá trị hiện tại là %(actual)s."
+
+#: .\core\validators\common\json.py:18
+#, python-format
+msgid "Remove unsupported keys: %(keys)s."
+msgstr "Vui lòng bỏ các khóa không được hỗ trợ: %(keys)s."
+
+#: .\core\validators\common\json.py:27
+msgid "Enter a valid JSON object."
+msgstr "Vui lòng nhập một đối tượng JSON hợp lệ."
+
+#: .\core\validators\common\string.py:26
+msgid "Enter a valid phone number in E.164 format, for example +84901234567."
+msgstr ""
+"Vui lòng nhập số điện thoại hợp lệ theo định dạng E.164, ví dụ +84901234567."
+
+#: .\core\validators\common\string.py:32
+msgid "Enter a valid hex color, for example #fff or #1a2b3c."
+msgstr "Vui lòng nhập mã màu hex hợp lệ, ví dụ #fff hoặc #1a2b3c."
+
+#: .\i18n\drf.py:5
+msgid "Authentication credentials were not provided."
+msgstr "Vui lòng đăng nhập để tiếp tục."
+
+#: .\i18n\drf.py:6
+msgid "Incorrect authentication credentials."
+msgstr "Thông tin đăng nhập không chính xác."
+
+#: .\i18n\drf.py:7
+msgid "You do not have permission to perform this action."
+msgstr "Bạn không có quyền thực hiện thao tác này."
+
+#: .\i18n\drf.py:8
+msgid "Not found."
+msgstr "Không tìm thấy dữ liệu."
+
+#: .\i18n\drf.py:9
+#, python-brace-format
+msgid "Method \"{method}\" not allowed."
+msgstr "Phương thức \"{method}\" không được hỗ trợ."
+
+#: .\i18n\drf.py:10
+msgid "Could not satisfy the request Accept header."
+msgstr "Máy chủ không hỗ trợ định dạng phản hồi được yêu cầu."
+
+#: .\i18n\drf.py:11
+#, python-brace-format
+msgid "Unsupported media type \"{media_type}\" in request."
+msgstr "Định dạng nội dung \"{media_type}\" không được hỗ trợ."
+
+#: .\i18n\drf.py:12
+msgid "Request was throttled."
+msgstr "Bạn đang gửi quá nhiều yêu cầu. Vui lòng thử lại sau."
+
+#: .\i18n\simplejwt.py:5
+msgid "Authorization header must contain two space-delimited values"
+msgstr "Thông tin xác thực không hợp lệ."
+
+#: .\i18n\simplejwt.py:6
+msgid "Given token not valid for any token type"
+msgstr "Phiên đăng nhập không hợp lệ."
+
+#: .\i18n\simplejwt.py:7
+msgid "Token contained no recognizable user identification"
+msgstr "Phiên đăng nhập không xác định được người dùng."
+
+#: .\i18n\simplejwt.py:8
+msgid "User not found"
+msgstr "Không tìm thấy người dùng."
+
+#: .\i18n\simplejwt.py:9
+msgid "User is inactive"
+msgstr "Tài khoản này đang bị vô hiệu hóa."
+
+#: .\i18n\simplejwt.py:10
+msgid "The user's password has been changed."
+msgstr "Mật khẩu đã thay đổi. Vui lòng đăng nhập lại."
+
+#: .\i18n\simplejwt.py:11
+msgid "Token is invalid"
+msgstr "Phiên đăng nhập không hợp lệ."
+
+#: .\i18n\simplejwt.py:12
+msgid "Token is expired"
+msgstr "Phiên đăng nhập đã hết hạn."
+
+#: .\i18n\simplejwt.py:13
+msgid "Token is invalid or expired"
+msgstr "Phiên đăng nhập không hợp lệ hoặc đã hết hạn."
+
+#: .\i18n\simplejwt.py:14
+msgid "No active account found with the given credentials"
+msgstr ""
+"Thông tin đăng nhập không chính xác hoặc tài khoản không còn hoạt động."
+
+#: .\i18n\simplejwt.py:15
+msgid "No active account found for the given token."
+msgstr "Phiên đăng nhập không còn hợp lệ cho tài khoản này."
+
+#: .\i18n\simplejwt.py:16
+msgid "Token is blacklisted"
+msgstr "Phiên đăng nhập này đã bị thu hồi."
+
+#: .\i18n\simplejwt.py:17
+msgid "Cannot create token with no type or lifetime"
+msgstr "Không thể tạo phiên đăng nhập."
+
+#: .\i18n\simplejwt.py:18
+msgid "Token has no id"
+msgstr "Phiên đăng nhập không hợp lệ."
+
+#: .\i18n\simplejwt.py:19
+msgid "Token has no type"
+msgstr "Phiên đăng nhập không hợp lệ."
+
+#: .\i18n\simplejwt.py:20
+msgid "Token has wrong type"
+msgstr "Phiên đăng nhập không phù hợp cho thao tác này."
+
+#: .\i18n\simplejwt.py:21
+#, python-brace-format
+msgid "Token has no '{}' claim"
+msgstr "Phiên đăng nhập thiếu thông tin '{}'."
+
+#: .\i18n\simplejwt.py:22
+#, python-brace-format
+msgid "Token '{}' claim has expired"
+msgstr "Thông tin '{}' trong phiên đăng nhập đã hết hạn."

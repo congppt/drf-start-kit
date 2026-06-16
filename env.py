@@ -34,6 +34,8 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise EnvironmentError("SECRET_KEY is not configured")
 
+LANGUAGE_CODE = os.getenv("LANGUAGE_CODE", "vi")
+
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",") if not IS_LOCAL else []
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if not IS_LOCAL else []
 

@@ -16,6 +16,7 @@ A starter kit for building APIs with Django REST Framework. It provides a ready-
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
 - [Authentication](#authentication)
+- [Internationalization](#internationalization)
 - [Project Structure](#project-structure)
 - [Coding Conventions](#coding-conventions)
 - [Creating a Complete Viewset](#creating-a-complete-viewset)
@@ -27,15 +28,14 @@ A starter kit for building APIs with Django REST Framework. It provides a ready-
 
 ## Quick Start
 
-**Prerequisites:** Python 3.14+, Docker (optional), Postgres, Redis, and MinIO for full local parity with production.
+**Prerequisites:** Python 3.14+, Docker (optional), Postgres, Redis, and MinIO for full local parity with production. The development script can install GNU gettext for local translation compilation when a supported package manager is available.
 
 ### Docker (recommended)
 
 Starts the app, Huey worker, Postgres, Redis, and MinIO. Migrations run automatically via the `migrate` service.
 
 ```bash
-# create .env — see Configuration
-docker compose up --build
+bash dev.sh
 ```
 
 Open Swagger at [http://localhost:8000/api/schema/swagger/](http://localhost:8000/api/schema/swagger/).
@@ -43,9 +43,7 @@ Open Swagger at [http://localhost:8000/api/schema/swagger/](http://localhost:800
 ### Local Python
 
 ```bash
-pip install -r requirements.txt
-# create .env with required variables — see Configuration
-python manage.py migrate
+bash dev.sh local
 python manage.py createsuperuser
 python manage.py runserver
 ```
@@ -61,6 +59,8 @@ Load bundled fixtures when you add seed data under `core/fixtures/`:
 ```bash
 python manage.py loaddata core/fixtures/group.json core/fixtures/user.json
 ```
+
+`bash dev.sh` and `bash dev.sh local` are safe to rerun. The script checks for existing setup such as `.env`, `.venv`, and GNU gettext before creating or installing anything. The generated `.env` uses development defaults; review it before using it outside local development.
 
 ## Configuration
 
@@ -80,6 +80,7 @@ Settings are loaded from environment variables via `env.py` (uses `python-dotenv
 | `MINIO__PUBLIC_URL` | no | Public base URL; defaults to `http://{MINIO__ENDPOINT}` |
 | `ALLOWED_HOSTS` | production | Comma-separated hosts |
 | `ALLOWED_ORIGINS` | production | Comma-separated CORS origins |
+| `LANGUAGE_CODE` | no | Default API language when no request preference matches; defaults to `vi` |
 | `HUEY_WORKERS` | no | Huey consumer thread count (default `6`) |
 
 Example `.env` for local development alongside `docker compose`:
@@ -120,6 +121,36 @@ Authorization: Bearer <access_token>
 
 Protected viewsets default to `JWTAuthentication`. Use `permission_classes = [permissions.IsAuthenticated]` or `DjangoModelPermissions` on viewsets as needed.
 
+## Internationalization
+
+DRF uses Django's translation system for built-in exception and serializer validation messages. This project enables per-request language negotiation with `django.middleware.locale.LocaleMiddleware`, so API clients can set `Accept-Language`, for example:
+
+```http
+Accept-Language: vi
+Accept-Language: en
+```
+
+Supported languages are configured in `config/settings.py` as Vietnamese (`vi`) and English (`en`). The default comes from `LANGUAGE_CODE` and falls back to `vi`.
+
+Project-owned user-facing strings should be wrapped with `gettext_lazy`:
+
+```python
+from django.utils.translation import gettext_lazy as _
+
+raise serializers.ValidationError(_("File does not exist."))
+```
+
+Third-party message overrides live under `i18n/`, grouped by source package such as `drf.py` and `simplejwt.py`. Add new plugin overrides in a dedicated module so `makemessages` keeps those `msgid`s in the project catalog without patching installed packages.
+
+Translation catalogs live under `locale/`. Commit only the `.po` source files; `.mo` files are compiled locally or during Docker build and are not tracked in git. After adding or changing translated strings, refresh and compile catalogs:
+
+```bash
+python manage.py makemessages -l vi
+python manage.py compilemessages
+```
+
+Docker builds compile catalogs automatically. For local development, install a current GNU gettext so Django can find compatible `msgfmt` and `msgmerge` commands. On Windows, prefer `winget install --id mlocati.GetText -e`; the older GnuWin32 gettext package does not support Django's `makemessages` options.
+
 ## Project Structure
 
 ```text
@@ -137,6 +168,8 @@ core/                   Main application package
   fixtures/             Django fixture files for seed data
   migrations/           Django schema migrations
 integrations/           External service clients, for example MinIO
+i18n/                   Third-party translation override msgids
+locale/                 Django translation catalogs
 utils/                  Shared helpers such as cache and logging
 manage.py               Django management entry point
 docker-compose.yml      Local services: app, worker, Postgres, Redis, MinIO

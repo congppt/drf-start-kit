@@ -13,9 +13,9 @@ class JSONSchemaValidator:
     schema.
     """
 
-    message = _('Invalid value for key "%(key)s".')
-    type_message = _('Expected %(expected)s, got %(actual)s.')
-    extra_keys_message = _('Unexpected keys: %(keys)s.')
+    message = _('Enter a valid value for "%(key)s".')
+    type_message = _('Use a %(expected)s value. Received %(actual)s.')
+    extra_keys_message = _('Remove unsupported keys: %(keys)s.')
 
     def __init__(self, schema: dict, *, strict: bool = False):
         self.schema = schema
@@ -24,7 +24,7 @@ class JSONSchemaValidator:
     def __call__(self, value: dict):
         if not isinstance(value, dict):
             raise ValidationError(
-                _('Expected a JSON object.'),
+                _('Enter a valid JSON object.'),
                 code='invalid',
                 params={'value': value},
             )
