@@ -4,7 +4,7 @@ from datetime import timedelta
 
 from loguru import logger as __logger
 
-LOG_DIR = 'logs'
+LOG_DIR = "logs"
 # Set traceback limit
 sys.tracebacklimit = 1
 # Create log directory if it doesn't exist
@@ -39,8 +39,7 @@ __logger.add(
 __logger.add(
     os.path.join(LOG_DIR, "{time:YY-MM-DD}.background.json"),
     level="INFO",
-    filter=lambda record: "huey" in record["name"].lower()
-    or "tasks" in record["name"].lower(),
+    filter=lambda record: "huey" in record["name"].lower() or "tasks" in record["name"].lower(),
     **__log_opts,
 )
 

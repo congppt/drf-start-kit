@@ -13,21 +13,23 @@ class AuditableModelSerializer(serializers.ModelSerializer):
             return super().get_field_names(declared_fields, info)
 
     def get_extra_kwargs(self):
-        with self._extend_meta_read_only([
-            'created',
-            'created_by',
-            'updated',
-            'updated_by',
-            'is_deleted',
-            'deleted',
-            'deleted_by',
-        ]):
+        with self._extend_meta_read_only(
+            [
+                "created",
+                "created_by",
+                "updated",
+                "updated_by",
+                "is_deleted",
+                "deleted",
+                "deleted_by",
+            ]
+        ):
             return super().get_extra_kwargs()
 
     @contextmanager
     def _extend_meta_exclude(self, field_names):
-        fields = getattr(self.Meta, 'fields', None)
-        exclude = getattr(self.Meta, 'exclude', None)
+        fields = getattr(self.Meta, "fields", None)
+        exclude = getattr(self.Meta, "exclude", None)
 
         if fields is not None:
             yield
@@ -44,7 +46,7 @@ class AuditableModelSerializer(serializers.ModelSerializer):
 
     @contextmanager
     def _extend_meta_read_only(self, field_names):
-        read_only_fields = getattr(self.Meta, 'read_only_fields', [])
+        read_only_fields = getattr(self.Meta, "read_only_fields", [])
         with self._temporary_meta_options(
             read_only_fields=self._merge_field_names(read_only_fields, field_names),
         ):
@@ -52,9 +54,9 @@ class AuditableModelSerializer(serializers.ModelSerializer):
 
     @contextmanager
     def _temporary_meta_options(self, **options):
-        meta = type('Meta', (self.Meta,), options)
-        original_meta = self.__dict__.get('Meta')
-        had_original_meta = 'Meta' in self.__dict__
+        meta = type("Meta", (self.Meta,), options)
+        original_meta = self.__dict__.get("Meta")
+        had_original_meta = "Meta" in self.__dict__
         self.Meta = meta
         try:
             yield
@@ -80,7 +82,7 @@ class ExcludeDeleteModelSerializer(AuditableModelSerializer):
     """
 
     def get_field_names(self, declared_fields, info):
-        with self._extend_meta_exclude(['is_deleted', 'deleted', 'deleted_by']):
+        with self._extend_meta_exclude(["is_deleted", "deleted", "deleted_by"]):
             return super().get_field_names(declared_fields, info)
 
 
@@ -90,5 +92,5 @@ class ExcludeAuditableModelSerializer(ExcludeDeleteModelSerializer):
     """
 
     def get_field_names(self, declared_fields, info):
-        with self._extend_meta_exclude(['created', 'created_by', 'updated', 'updated_by']):
+        with self._extend_meta_exclude(["created", "created_by", "updated", "updated_by"]):
             return super().get_field_names(declared_fields, info)

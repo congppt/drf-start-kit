@@ -15,6 +15,7 @@ R = TypeVar("R")
 _MISSING = object()
 __RENDERER = CamelCaseJSONRenderer()
 
+
 def _get_version_key(key: str) -> str:
     # Keep a separate namespace for version keys to avoid collisions.
     return f"__ver__:{key}"
@@ -96,6 +97,7 @@ def _stable_arg_hash(
     canonical = _canonical_arguments_payload(func, args, kwargs)
     payload = __RENDERER.render(canonical)
     return hashlib.sha256(payload).hexdigest()
+
 
 def make_cache_key(
     *,

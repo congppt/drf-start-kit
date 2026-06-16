@@ -1,5 +1,6 @@
 import json
 import time
+import uuid
 from typing import Any
 from urllib.parse import parse_qs
 
@@ -25,6 +26,7 @@ class LoggingMiddleware:
 
     def __extract_request_info(self, request, include_body=False):
         extra = {
+            "request_id": getattr(request, "request_id", None),
             "ip_address": self.__get_client_ip(request),
             "path": request.path,
             "query_params": request.GET.dict(),
@@ -50,9 +52,7 @@ class LoggingMiddleware:
                 elif "x-www-form-urlencoded" in content_type:
                     parsed_body = parse_qs(parsed_body)
                     # Convert lists of single values to single values
-                    parsed_body = {
-                        k: v[0] if len(v) == 1 else v for k, v in parsed_body.items()
-                    }
+                    parsed_body = {k: v[0] if len(v) == 1 else v for k, v in parsed_body.items()}
             except (UnicodeDecodeError, json.JSONDecodeError):
                 parsed_body = "[Failed to parse request body]"
 
@@ -72,12 +72,14 @@ class LoggingMiddleware:
         return extra
 
     async def __call__(self, request):
+        request.request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
         start = time.perf_counter()
         response = await self.get_response(request)
         process_duration = time.perf_counter() - start
         extra = self.__extract_request_info(request)
         extra["duration"] = process_duration
         extra["status_code"] = response.status_code
+        response.headers["X-Request-ID"] = request.request_id
         logger.info("", extra=extra)
         return response
 

@@ -1,7 +1,7 @@
-from rest_framework.pagination import LimitOffsetPagination, PageNumberPagination, CursorPagination
+from rest_framework.pagination import CursorPagination, LimitOffsetPagination, PageNumberPagination
 
-from .limit_offset import Max100LimitOffsetPagination
 from . import factory
+from .limit_offset import Max100LimitOffsetPagination
 
 __all__ = [
     # DRF Built-in Pagination Classes
@@ -11,5 +11,5 @@ __all__ = [
     # Custom Limit Offset Pagination Classes
     Max100LimitOffsetPagination,
     # Custom Pagination Classes Factory
-    factory
+    factory,
 ]

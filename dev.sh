@@ -63,6 +63,7 @@ MINIO__ACCESS_KEY=minioadmin
 MINIO__SECRET_KEY=minioadmin
 MINIO__PUBLIC_BUCKET=public
 MINIO__PRIVATE_BUCKET=private
+MINIO__SECURE=false
 EOF
 }
 

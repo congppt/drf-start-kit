@@ -1,4 +1,4 @@
-from django.core.validators import validate_slug, validate_unicode_slug, RegexValidator
+from django.core.validators import RegexValidator, validate_slug, validate_unicode_slug
 from django.utils.deconstruct import deconstructible
 from django.utils.translation import gettext_lazy as _
 
@@ -23,11 +23,11 @@ class UnicodeSlugValidator:
 
 @deconstructible
 class PhoneNumberValidator(RegexValidator):
-    message = _('Enter a valid phone number in E.164 format, for example +84901234567.')
-    regex = r'^\+[1-9]\d{1,14}$'
+    message = _("Enter a valid phone number in E.164 format, for example +84901234567.")
+    regex = r"^\+[1-9]\d{1,14}$"
 
 
 @deconstructible
 class HexColorValidator(RegexValidator):
-    message = _('Enter a valid hex color, for example #fff or #1a2b3c.')
-    regex = r'^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$'
+    message = _("Enter a valid hex color, for example #fff or #1a2b3c.")
+    regex = r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"

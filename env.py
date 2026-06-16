@@ -6,8 +6,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 __ENV = os.getenv("ENV", "LOCAL").upper()
+_VALID_ENVS = frozenset({"LOCAL", "STAGING", "PRODUCTION"})
+if __ENV not in _VALID_ENVS:
+    raise EnvironmentError(f"ENV must be one of {sorted(_VALID_ENVS)}, got {__ENV!r}")
+
+IS_LOCAL = __ENV == "LOCAL"
+IS_STAGING = __ENV == "STAGING"
 IS_PRODUCTION = __ENV == "PRODUCTION"
-IS_LOCAL = not IS_PRODUCTION
 
 DB_URL = os.getenv("DB_URL")
 if not DB_URL:
@@ -28,7 +33,9 @@ MINIO_ACCESS_KEY = os.getenv("MINIO__ACCESS_KEY")
 MINIO_SECRET_KEY = os.getenv("MINIO__SECRET_KEY")
 MINIO_PUBLIC_BUCKET = os.getenv("MINIO__PUBLIC_BUCKET")
 MINIO_PRIVATE_BUCKET = os.getenv("MINIO__PRIVATE_BUCKET")
-MINIO_PUBLIC_URL = os.getenv("MINIO__PUBLIC_URL", f"http://{MINIO_ENDPOINT}")
+MINIO_SECURE = os.getenv("MINIO__SECURE", "false").lower() in {"1", "true", "yes"}
+_default_minio_scheme = "https" if MINIO_SECURE else "http"
+MINIO_PUBLIC_URL = os.getenv("MINIO__PUBLIC_URL", f"{_default_minio_scheme}://{MINIO_ENDPOINT}")
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:

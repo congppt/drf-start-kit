@@ -26,7 +26,7 @@ def _check_minio() -> bool | None:
 
     if not env.MINIO_ENDPOINT:
         return None
-    from utils.minio import minio
+    from integrations.minio import minio
 
     minio.client.bucket_exists(env.MINIO_PRIVATE_BUCKET)
     return True

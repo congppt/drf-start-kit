@@ -1,4 +1,4 @@
-from rest_framework.throttling import AnonRateThrottle, UserRateThrottle, ScopedRateThrottle
+from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle, UserRateThrottle
 
 from . import factory
 
@@ -8,5 +8,5 @@ __all__ = [
     UserRateThrottle,
     ScopedRateThrottle,
     # Custom Throttling Classes Factory
-    factory
+    factory,
 ]

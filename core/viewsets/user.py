@@ -3,20 +3,16 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .. import models
-from .. import serializers
-from .. import mixins
-from .. import permissions
-from .. import pagination
+from .. import mixins, models, pagination, permissions, serializers, throttling
 
 
 class UserFilter(django_filters.FilterSet):
-    username = django_filters.CharFilter(lookup_expr='icontains')
     groups = django_filters.ModelMultipleChoiceFilter(queryset=models.Group.objects.all())
 
     class Meta:
         model = models.User
-        fields = ['is_active']
+        fields = ["is_active"]
+
 
 class UserViewSet(
     mixins.ListModelMixin,
@@ -25,26 +21,36 @@ class UserViewSet(
     mixins.UpdateModelMixin,
     viewsets.GenericViewSet,
 ):
-    queryset = models.User.objects.prefetch_related('attachments__file').all()
-    permission_classes = [permissions.DjangoModelPermissions]
+    queryset = models.User.objects.prefetch_related("attachments__file").all()
+    permission_classes = [permissions.UserPermission]
     filterset_class = UserFilter
     pagination_class = pagination.factory.limit_offset_class(maximum_limit=200)
+    search_fields = ["username", "email", "first_name", "last_name"]
+    ordering_fields = ["username", "email", "created", "date_joined"]
+    ordering = ["username"]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        if not user.has_perm("core.view_user"):
+            return queryset.filter(pk=user.pk)
+        return queryset
 
     def get_serializer_class(self):
         match self.action:
-            case 'create':
+            case "create":
                 return serializers.UserCreateSerializer
-            case 'update' | 'partial_update':
+            case "update" | "partial_update":
                 return serializers.UserUpdateSerializer
-            case 'update_self' | 'partial_update_self':
+            case "update_self" | "partial_update_self":
                 return serializers.UserSelfUpdateSerializer
-            case 'change_password':
+            case "change_password":
                 return serializers.PasswordChangeSerializer
-            case 'change_password_self':
+            case "change_password_self":
                 return serializers.PasswordSelfChangeSerializer
-            case 'generate_avatar_upload_url_self':
+            case "generate_avatar_upload_url_self":
                 return serializers.UserAvatarUploadUrlSerializer
-            case 'change_avatar_self':
+            case "change_avatar_self":
                 return serializers.UserAvatarSelfUpdateSerializer
             case _:
                 return serializers.UserSerializer
@@ -57,9 +63,9 @@ class UserViewSet(
 
     @action(
         detail=False,
-        methods=['patch'],
-        url_path='me',
-        permission_classes=[permissions.IsAuthenticated]
+        methods=["patch"],
+        url_path="me",
+        permission_classes=[permissions.IsAuthenticated],
     )
     def update_self(self, request, pk=None):
         instance = request.user
@@ -70,8 +76,30 @@ class UserViewSet(
 
     @action(
         detail=True,
-        methods=['put'],
-        url_path='password',
+        methods=["get"],
+        url_path="permissions",
+    )
+    def user_permissions(self, request, pk=None):
+        user = self.get_object()
+        queryset = user.get_all_permissions_queryset()
+        serializer = serializers.PermissionSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="me/permissions",
+        permission_classes=[permissions.IsAuthenticated],
+    )
+    def permissions_self(self, request):
+        queryset = request.user.get_all_permissions_queryset()
+        serializer = serializers.PermissionSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(
+        detail=True,
+        methods=["put"],
+        url_path="password",
     )
     def change_password(self, request, pk=None):
         instance = self.get_object()
@@ -82,9 +110,10 @@ class UserViewSet(
 
     @action(
         detail=False,
-        methods=['put'],
-        url_path='me/password',
-        permission_classes=[permissions.IsAuthenticated]
+        methods=["put"],
+        url_path="me/password",
+        permission_classes=[permissions.IsAuthenticated],
+        throttle_classes=[throttling.factory.user_rate_throttle("10/minute")],
     )
     def change_password_self(self, request, pk=None):
         instance = request.user
@@ -95,9 +124,10 @@ class UserViewSet(
 
     @action(
         detail=False,
-        methods=['post'],
-        url_path='me/avatar/presigned-upload-url',
-        permission_classes=[permissions.IsAuthenticated]
+        methods=["post"],
+        url_path="me/avatar/presigned-upload-url",
+        permission_classes=[permissions.IsAuthenticated],
+        throttle_classes=[throttling.factory.user_rate_throttle("10/minute")],
     )
     def generate_avatar_upload_url_self(self, request, pk=None):
         serializer = self.get_serializer(data=request.data)
@@ -107,9 +137,9 @@ class UserViewSet(
 
     @action(
         detail=False,
-        methods=['put'],
-        url_path='me/avatar',
-        permission_classes=[permissions.IsAuthenticated]
+        methods=["put"],
+        url_path="me/avatar",
+        permission_classes=[permissions.IsAuthenticated],
     )
     def change_avatar_self(self, request, pk=None):
         instance = request.user

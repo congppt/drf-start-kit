@@ -14,8 +14,8 @@ class JSONSchemaValidator:
     """
 
     message = _('Enter a valid value for "%(key)s".')
-    type_message = _('Use a %(expected)s value. Received %(actual)s.')
-    extra_keys_message = _('Remove unsupported keys: %(keys)s.')
+    type_message = _("Use a %(expected)s value. Received %(actual)s.")
+    extra_keys_message = _("Remove unsupported keys: %(keys)s.")
 
     def __init__(self, schema: dict, *, strict: bool = False):
         self.schema = schema
@@ -24,9 +24,9 @@ class JSONSchemaValidator:
     def __call__(self, value: dict):
         if not isinstance(value, dict):
             raise ValidationError(
-                _('Enter a valid JSON object.'),
-                code='invalid',
-                params={'value': value},
+                _("Enter a valid JSON object."),
+                code="invalid",
+                params={"value": value},
             )
 
         if self.strict:
@@ -34,8 +34,8 @@ class JSONSchemaValidator:
             if extra_keys:
                 raise ValidationError(
                     self.extra_keys_message,
-                    code='extra_keys',
-                    params={'keys': ', '.join(extra_keys)},
+                    code="extra_keys",
+                    params={"keys": ", ".join(extra_keys)},
                 )
 
         errors = []
@@ -45,19 +45,23 @@ class JSONSchemaValidator:
             try:
                 self._validate_item(value[key], constraint)
             except ValidationError as exc:
-                if hasattr(exc, 'error_list'):
+                if hasattr(exc, "error_list"):
                     for error in exc.error_list:
-                        errors.append(ValidationError(
-                            error.message,
-                            code=error.code,
-                            params={**(error.params or {}), 'key': key},
-                        ))
+                        errors.append(
+                            ValidationError(
+                                error.message,
+                                code=error.code,
+                                params={**(error.params or {}), "key": key},
+                            )
+                        )
                 else:
-                    errors.append(ValidationError(
-                        self.message,
-                        code=exc.code or 'invalid',
-                        params={'key': key, 'value': value[key]},
-                    ))
+                    errors.append(
+                        ValidationError(
+                            self.message,
+                            code=exc.code or "invalid",
+                            params={"key": key, "value": value[key]},
+                        )
+                    )
 
         if errors:
             raise ValidationError(errors)
@@ -67,14 +71,14 @@ class JSONSchemaValidator:
             if constraint is bool and not isinstance(item, bool):
                 raise ValidationError(
                     self.type_message,
-                    code='invalid',
-                    params={'expected': 'bool', 'actual': type(item).__name__},
+                    code="invalid",
+                    params={"expected": "bool", "actual": type(item).__name__},
                 )
             if constraint is not bool and not isinstance(item, constraint):
                 raise ValidationError(
                     self.type_message,
-                    code='invalid',
-                    params={'expected': constraint.__name__, 'actual': type(item).__name__},
+                    code="invalid",
+                    params={"expected": constraint.__name__, "actual": type(item).__name__},
                 )
             return
 
@@ -87,13 +91,9 @@ class JSONSchemaValidator:
             return
 
         raise TypeError(
-            f'JSONSchemaValidator schema values must be types, validators, or '
-            f'JSONSchemaValidator instances, not {type(constraint).__name__}.'
+            f"JSONSchemaValidator schema values must be types, validators, or "
+            f"JSONSchemaValidator instances, not {type(constraint).__name__}."
         )
 
     def __eq__(self, other):
-        return (
-            isinstance(other, JSONSchemaValidator)
-            and self.schema == other.schema
-            and self.strict == other.strict
-        )
+        return isinstance(other, JSONSchemaValidator) and self.schema == other.schema and self.strict == other.strict

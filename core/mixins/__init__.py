@@ -1,6 +1,12 @@
-from rest_framework.mixins import CreateModelMixin, UpdateModelMixin, DestroyModelMixin, RetrieveModelMixin, ListModelMixin
+from rest_framework.mixins import (
+    CreateModelMixin,
+    DestroyModelMixin,
+    ListModelMixin,
+    RetrieveModelMixin,
+    UpdateModelMixin,
+)
 
-from .common import CreateAuditableModelMixin, UpdateAuditableModelMixin, DestroyAuditableModelMixin
+from .common import CreateAuditableModelMixin, DestroyAuditableModelMixin, UpdateAuditableModelMixin
 
 __all__ = [
     # DRF Built-in Mixins

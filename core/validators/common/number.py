@@ -1,4 +1,4 @@
-from django.core.validators import validate_integer, int_list_validator
+from django.core.validators import int_list_validator, validate_integer
 from django.utils.deconstruct import deconstructible
 
 

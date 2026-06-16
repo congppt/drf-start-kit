@@ -1,6 +1,7 @@
-from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated, IsAdminUser, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import DjangoModelPermissions, IsAdminUser, IsAuthenticated, IsAuthenticatedOrReadOnly
 
 from . import factory
+from .user import UserPermission
 
 __all__ = [
     # DRF Built-in Permissions
@@ -9,5 +10,7 @@ __all__ = [
     IsAdminUser,
     IsAuthenticatedOrReadOnly,
     # Custom Permissions Classes Factory
-    factory
+    factory,
+    # Custom Permissions Classes
+    UserPermission,
 ]

@@ -10,6 +10,11 @@
 REGISTRY_URL=""
 IMAGE_NAME=""
 
+if [[ -z "$REGISTRY_URL" || -z "$IMAGE_NAME" ]]; then
+  echo "Error: REGISTRY_URL and IMAGE_NAME must be set before building." >&2
+  exit 1
+fi
+
 # Check if --prod flag is passed
 if [[ "$1" == "--prod" ]]; then
   echo "Building production image..."

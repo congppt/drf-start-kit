@@ -1,4 +1,5 @@
 import uuid
+
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -16,9 +17,10 @@ class FileAsset(models.Model):
     status = models.CharField(max_length=10, choices=UploadStatus.choices, default=UploadStatus.PENDING, db_index=True)
     created = models.DateTimeField(auto_now_add=True)
 
+
 class FileAttachment(models.Model):
-    file = models.ForeignKey(FileAsset, on_delete=models.CASCADE, related_name='attachments')
+    file = models.ForeignKey(FileAsset, on_delete=models.CASCADE, related_name="attachments")
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.CharField(max_length=64)
-    content_object = GenericForeignKey('content_type', 'object_id')
+    content_object = GenericForeignKey("content_type", "object_id")
     field_name = models.CharField(max_length=50)

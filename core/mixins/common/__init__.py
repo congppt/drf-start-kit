@@ -1,4 +1,4 @@
-from .audit import CreateAuditableModelMixin, UpdateAuditableModelMixin, DestroyAuditableModelMixin
+from .audit import CreateAuditableModelMixin, DestroyAuditableModelMixin, UpdateAuditableModelMixin
 
 __all__ = [
     # Auditable Entity Based Mixins

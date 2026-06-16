@@ -1,0 +1,17 @@
+[project]
+name = "drf-starter-kit"
+requires-python = ">=3.13"
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+src = ["config", "core", "i18n", "integrations", "utils"]
+
+[tool.ruff.lint]
+select = ["I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["config", "core", "i18n", "integrations", "utils"]
+
+[tool.ruff.format]
+quote-style = "double"

@@ -1,34 +1,39 @@
-import mimetypes
-
-from django.conf import settings
 from django.contrib.auth import password_validation
 from django.db import transaction
-from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from integrations.minio import minio
-from .. import models
-from .. import validators
-from .common import ExcludeDeleteModelSerializer
-from .group import GroupSerializer
 
+from .. import models, validators
+from .common import ExcludeDeleteModelSerializer, FileAttachSerializer, FilePresignedUploadUrlSerializer
+from .group import GroupSerializer
 
 AVATAR_FIELD_NAME = models.User.AVATAR_FIELD_NAME
 AVATAR_IS_PUBLIC = models.User.AVATAR_IS_PUBLIC
 
+USER_PREFERENCES_SCHEMA = {
+    "theme": str,
+    "lang": str,
+}
+
+
 class UserSerializer(ExcludeDeleteModelSerializer):
     avatar_url = serializers.SerializerMethodField()
     groups = GroupSerializer(many=True, read_only=True)
+    preferences = serializers.JSONField(
+        validators=[validators.JSONSchemaValidator(USER_PREFERENCES_SCHEMA, strict=True)],
+        required=False,
+    )
+
     class Meta:
         model = models.User
-        exclude = ['password', 'user_permissions']
+        exclude = ["password", "user_permissions"]
 
     def get_avatar_url(self, obj: models.User) -> str | None:
         attachment = (
-            obj.attachments
-            .filter(field_name=AVATAR_FIELD_NAME, file__status=models.UploadStatus.READY)
-            .select_related('file')
+            obj.attachments.filter(field_name=AVATAR_FIELD_NAME, file__status=models.UploadStatus.READY)
+            .select_related("file")
             .first()
         )
         if not attachment:
@@ -38,29 +43,33 @@ class UserSerializer(ExcludeDeleteModelSerializer):
             return minio.get_public_url(file_asset.id)
         return minio.presigned_download(file_asset.id, file_asset.name)
 
+
 class UserCreateSerializer(UserSerializer):
     password = serializers.CharField(validators=[password_validation.validate_password])
     groups = serializers.PrimaryKeyRelatedField(many=True, queryset=models.Group.objects.all())
+
     class Meta:
         model = models.User
-        exclude = ['user_permissions', 'last_login', 'date_joined']
+        exclude = ["user_permissions", "last_login", "date_joined"]
 
     def create(self, validated_data: dict):
-        groups = validated_data.pop('groups')
+        groups = validated_data.pop("groups")
         with transaction.atomic():
             user = models.User.objects.create_user(**validated_data)
             user.groups.set(groups)
         return user
 
+
 class UserUpdateSerializer(UserSerializer):
     groups = serializers.PrimaryKeyRelatedField(many=True, queryset=models.Group.objects.all())
+
     class Meta:
         model = models.User
-        exclude = ['username', 'password', 'last_login', 'date_joined', 'user_permissions']
+        exclude = ["username", "password", "last_login", "date_joined", "user_permissions"]
 
     def update(self, instance: models.User, validated_data: dict):
-        performed_by = validated_data.pop('performed_by')
-        groups = validated_data.pop('groups', [])
+        performed_by = validated_data.pop("performed_by")
+        groups = validated_data.pop("groups", [])
         for key, value in validated_data.items():
             setattr(instance, key, value)
         with transaction.atomic():
@@ -68,99 +77,50 @@ class UserUpdateSerializer(UserSerializer):
             instance.groups.set(groups)
         return instance
 
+
 class UserSelfUpdateSerializer(UserSerializer):
     class Meta:
         model = models.User
-        fields = ['first_name', 'last_name', 'email']
+        fields = ["first_name", "last_name", "email", "preferences"]
+
 
 class PasswordChangeSerializer(serializers.Serializer):
     new_password = serializers.CharField(validators=[password_validation.validate_password])
 
     def update(self, instance: models.User, validated_data: dict):
-        performed_by = validated_data.pop('performed_by')
-        instance.set_password(validated_data['new_password'])
+        performed_by = validated_data.pop("performed_by")
+        instance.set_password(validated_data["new_password"])
         instance.save(performed_by=performed_by)
         return instance
 
+
 class PasswordSelfChangeSerializer(PasswordChangeSerializer):
     old_password = serializers.CharField()
-    
+
     def validate_old_password(self, value: str):
-        if not self.context['request'].user.check_password(value):
-            raise serializers.ValidationError(_('The current password is incorrect.'))
+        if not self.context["request"].user.check_password(value):
+            raise serializers.ValidationError(_("The current password is incorrect."))
         return value
 
     def validate(self, attrs: dict):
-        if attrs['new_password'] == attrs['old_password']:
-            raise serializers.ValidationError(_('The new password must be different from the current password.'))
+        if attrs["new_password"] == attrs["old_password"]:
+            raise serializers.ValidationError(_("The new password must be different from the current password."))
         return attrs
 
-class UserAvatarUploadUrlSerializer(serializers.Serializer):
-    file_name = serializers.CharField(
-        write_only=True,
-        validators=[validators.ImageFileNameValidator()],
-    )
-    file_size = serializers.IntegerField(
-        write_only=True,
-        validators=[validators.FileSizeValidator()],
-    )
 
-    upload_url = serializers.CharField(read_only=True)
-    file_id = serializers.UUIDField(read_only=True)
-    expires_at = serializers.DateTimeField(read_only=True)
-
-    def create(self, validated_data: dict):
-        performed_by = validated_data.pop('performed_by')
-        content_type, _ = mimetypes.guess_type(validated_data['file_name'])
-        file_asset = models.FileAsset.objects.create(
-            name=validated_data['file_name'],
-            content_type=content_type,
-            size=validated_data['file_size'],
-            is_public=AVATAR_IS_PUBLIC,
-            owner=performed_by.username,
-        )
-        url = minio.presigned_upload(
-            file_asset.id,
-            timezone.timedelta(seconds=settings.FILE_ORPHANED_INTERVAL + 60),
-            is_public=AVATAR_IS_PUBLIC
-        )
-        return {
-            'file_id': file_asset.id,
-            'upload_url': url,
-            'expires_at': timezone.now() + timezone.timedelta(minutes=10),
-        }
+class UserAvatarUploadUrlSerializer(FilePresignedUploadUrlSerializer):
+    is_public = AVATAR_IS_PUBLIC
 
 
-class UserAvatarSelfUpdateSerializer(serializers.Serializer):
-    file_id = serializers.PrimaryKeyRelatedField(queryset=models.FileAsset.objects.all())
-
-    def validate_file_id(self, value: models.FileAsset):
-        request = self.context['request']
-        if value.owner != request.user.username:
-            raise serializers.ValidationError(_('Please choose a file that you uploaded.'))
-        attachment = getattr(value, 'attachment', None)
-        if attachment and (
-            attachment.content_object != request.user
-            or attachment.field_name != AVATAR_FIELD_NAME
-        ):
-            raise serializers.ValidationError(_('This file is already attached to another record.'))
-        file_stat = minio.stat(value.id, is_public=AVATAR_IS_PUBLIC)
-        if not file_stat:
-            raise serializers.ValidationError(_('We could not find the uploaded file.'))
-        if file_stat.size != value.size:
-            raise serializers.ValidationError(_('The uploaded file is invalid. Please upload it again.'))
-        if file_stat.content_type != value.content_type:
-            raise serializers.ValidationError(_('This file type is not supported. Please upload another file.'))
-        return value
+class UserAvatarSelfUpdateSerializer(FileAttachSerializer):
+    is_public = AVATAR_IS_PUBLIC
+    field_name = AVATAR_FIELD_NAME
 
     def update(self, instance: models.User, validated_data: dict):
-        file_asset = validated_data['file_id']
+        file = validated_data["file"]
         with transaction.atomic():
-            instance.attachments.filter(field_name=AVATAR_FIELD_NAME).delete()
-            instance.attachments.create(
-                file=file_asset,
-                field_name=AVATAR_FIELD_NAME,
-            )
-            file_asset.status = models.UploadStatus.READY
-            file_asset.save()
+            instance.attachments.filter(field_name=self.field_name).delete()
+            instance.attachments.create(file=file, field_name=self.field_name)
+            file.status = models.UploadStatus.READY
+            file.save()
         return instance

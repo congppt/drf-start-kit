@@ -1,6 +1,6 @@
-from .user import UserViewSet
 from .group import GroupViewSet
-from .permission import PermissionViewSet, GroupPermissionViewSet
+from .permission import GroupPermissionViewSet, PermissionViewSet
+from .user import UserViewSet
 
 __all__ = [
     # User Viewsets
