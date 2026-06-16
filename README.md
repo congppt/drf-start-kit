@@ -5,29 +5,43 @@ A starter kit for building APIs with Django REST Framework. It provides a ready-
 | Resource | URL |
 |----------|-----|
 | API root | `/api/` |
-| Swagger UI | `/api/schema/swagger/` |
+| Swagger UI | `/api/schema/swagger/` (hidden in `PRODUCTION`) |
 | Health check | `/api/health/` |
 | JWT obtain | `POST /api/token/` |
 | JWT refresh | `POST /api/token/refresh/` |
 | JWT logout | `POST /api/token/logout/` |
-| User permissions | `GET /api/users/{id}/permissions/` |
 | Current user permissions | `GET /api/users/me/permissions/` |
 
 ## Table of Contents
 
+**Get started**
+
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
-- [Authentication](#authentication)
-- [Internationalization](#internationalization)
+
+**Extend the codebase**
+
 - [Project Structure](#project-structure)
 - [Coding Conventions](#coding-conventions)
 - [Creating a Complete Viewset](#creating-a-complete-viewset)
 - [Auditable Models and Serializers](#auditable-models-and-serializers)
 - [System actor](#system-actor)
+
+**Reference**
+
 - [DRF Reference](#drf-reference)
 - [API Call Flow](#api-call-flow)
+- [Authentication](#authentication)
 - [Integrations](#integrations)
 - [Operations](#operations)
+
+**Appendix**
+
+- [Internationalization](#internationalization)
+- [Audit trail / event log (example)](#audit-trail--event-log-example)
+- [Code formatting (Ruff)](#code-formatting-ruff)
+
+Documentation is ordered for extending the starter kit: run and configure first, then project conventions and patterns, then runtime reference, then optional topics in the appendix.
 
 ## Quick Start
 
@@ -74,7 +88,7 @@ Settings are loaded from environment variables via `env.py` (uses `python-dotenv
 | `DB_URL` | yes | Postgres URL, e.g. `postgresql://user:pass@localhost:5432/dbname` |
 | `SECRET_KEY` | yes | Django secret key |
 | `ENV` | no | `LOCAL` (default), `STAGING`, or `PRODUCTION` |
-| `REDIS_URL` | production | Required when `ENV=PRODUCTION`; used for caching |
+| `REDIS_URL` | STAGING, PRODUCTION | Required when `ENV` is not `LOCAL`; used for caching |
 | `MINIO__ENDPOINT` | for file features | Host and port, e.g. `localhost:9000` |
 | `MINIO__ACCESS_KEY` | for file features | MinIO access key |
 | `MINIO__SECRET_KEY` | for file features | MinIO secret key |
@@ -82,8 +96,8 @@ Settings are loaded from environment variables via `env.py` (uses `python-dotenv
 | `MINIO__PRIVATE_BUCKET` | for file features | Private bucket name |
 | `MINIO__PUBLIC_URL` | no | Public base URL; defaults to `http(s)://{MINIO__ENDPOINT}` from `MINIO__SECURE` |
 | `MINIO__SECURE` | no | Use HTTPS for MinIO client (`true`/`false`, default `false`) |
-| `ALLOWED_HOSTS` | production | Comma-separated hosts |
-| `ALLOWED_ORIGINS` | production | Comma-separated CORS origins |
+| `ALLOWED_HOSTS` | STAGING, PRODUCTION | Comma-separated hosts |
+| `ALLOWED_ORIGINS` | STAGING, PRODUCTION | Comma-separated CORS origins (see note below) |
 | `LANGUAGE_CODE` | no | Default API language when no request preference matches; defaults to `vi` |
 | `HUEY_WORKERS` | no | Huey consumer thread count (default `6`) |
 
@@ -99,65 +113,20 @@ MINIO__ACCESS_KEY=minioadmin
 MINIO__SECRET_KEY=minioadmin
 MINIO__PUBLIC_BUCKET=public
 MINIO__PRIVATE_BUCKET=private
+MINIO__SECURE=false
 ```
 
 Name service-specific variables with double underscores (`MINIO__*`). Keep shared settings simple (`DB_URL`, `SECRET_KEY`, `REDIS_URL`).
 
-## Authentication
+**Environment behaviour**
 
-JWT auth uses `rest_framework_simplejwt` with token blacklist support. Token obtain and refresh endpoints are throttled to `5/minute` per IP.
+| `ENV` | `DEBUG` | Cache | Swagger UI | CORS |
+|-------|---------|-------|------------|------|
+| `LOCAL` | on | dummy | yes | allow all origins |
+| `STAGING` | off | Redis | yes | allow all origins (test environment) |
+| `PRODUCTION` | off | Redis | hidden | `ALLOWED_ORIGINS` only |
 
-**Obtain tokens** — `POST /api/token/` with JSON body (camelCase keys accepted):
-
-```json
-{ "username": "admin", "password": "..." }
-```
-
-**Refresh** — `POST /api/token/refresh/` with `{ "refresh": "..." }`.
-
-**Logout** — `POST /api/token/logout/` with `{ "refresh": "..." }` to blacklist the refresh token.
-
-Self-service password change (`PUT /api/users/me/password/`) and avatar presigned upload (`POST /api/users/me/avatar/presigned-upload-url/`) are throttled to `10/minute` per authenticated user.
-
-Token payload claims are camelized to match API JSON (`core/serializers/auth.py`). Send the access token on protected requests:
-
-```http
-Authorization: Bearer <access_token>
-```
-
-Protected viewsets default to `JWTAuthentication`. Use `permission_classes = [permissions.IsAuthenticated]` or `DjangoModelPermissions` on viewsets as needed.
-
-Users without `core.view_user` may only list/retrieve their own account. Use `GET /api/users/me/permissions/` or `GET /api/users/{id}/permissions/` for effective permissions (direct grants plus group permissions).
-
-## Internationalization
-
-DRF uses Django's translation system for built-in exception and serializer validation messages. This project enables per-request language negotiation with `django.middleware.locale.LocaleMiddleware`, so API clients can set `Accept-Language`, for example:
-
-```http
-Accept-Language: vi
-Accept-Language: en
-```
-
-Supported languages are configured in `config/settings.py` as Vietnamese (`vi`) and English (`en`). The default comes from `LANGUAGE_CODE` and falls back to `vi`.
-
-Project-owned user-facing strings should be wrapped with `gettext_lazy`:
-
-```python
-from django.utils.translation import gettext_lazy as _
-
-raise serializers.ValidationError(_("File does not exist."))
-```
-
-Third-party message overrides live under `i18n/`, grouped by source package such as `drf.py` and `simplejwt.py`. Add new plugin overrides in a dedicated module so `makemessages` keeps those `msgid`s in the project catalog without patching installed packages.
-
-Translation catalogs live under `locale/`. Commit only the `.po` source files; `.mo` files are compiled locally or during Docker build and are not tracked in git. After adding or changing translated strings, refresh and compile catalogs:
-
-```bash
-python manage.py makemessages -l vi
-python manage.py compilemessages
-```
-
-Docker builds compile catalogs automatically. For local development, install a current GNU gettext so Django can find compatible `msgfmt` and `msgmerge` commands. On Windows, prefer `winget install --id mlocati.GetText -e`; the older GnuWin32 gettext package does not support Django's `makemessages` options.
+When `ENV` is not `PRODUCTION`, `CORS_ALLOW_ALL_ORIGINS` is enabled so LOCAL and STAGING stay easy to test against arbitrary front-end dev servers. Production restricts origins to `ALLOWED_ORIGINS`.
 
 ## Project Structure
 
@@ -216,7 +185,7 @@ When adding a new API resource, create the viewset as a thin orchestration layer
 10. Register the route in a file under `core/views` so `core.views.__init__` can collect it into `core.urls`.
 11. Verify the endpoint in Swagger and add tests when behavior includes permissions, filters, validation, or side effects.
 
-`UserViewSet` is the main reference: model permissions, `UserFilter`, limit-offset pagination, action-specific serializers, self-service endpoints, password validation, avatar presigned upload URLs, and MinIO-backed file verification.
+`UserViewSet` is the main reference: `DjangoModelPermissions`, queryset scoping without `core.view_user`, `UserFilter`, limit-offset pagination, action-specific serializers, self-service endpoints, password validation, avatar presigned upload URLs, and MinIO-backed file verification.
 
 Minimal pattern:
 
@@ -294,6 +263,88 @@ Use `AuditableModelViewSet` for full CRUD on auditable models with actor trackin
 
 Prefer explicit `Meta.fields` for most serializers. Use these bases when a serializer needs inherited audit handling, especially with `Meta.exclude`. For example, `UserSerializer` inherits from `ExcludeDeleteModelSerializer` so API responses do not expose soft-delete metadata.
 
+## System actor
+
+Auditable models require `performed_by` on every write. HTTP viewsets pass `request.user`; offline flows (management commands, Huey tasks, fixtures, migrations) have no caller.
+
+`core/constants.py` exports `SYSTEM_ACTOR` — an **unsaved** `User(username='system')`. It is never inserted into the database. Audit fields store the string `'system'` via `performed_by.username`.
+
+### When to use
+
+| Context | Actor |
+|---------|--------|
+| Viewset / API handler | `request.user` |
+| Serializer called from a viewset | `serializer.save(performed_by=request.user)` |
+| Management command | `SYSTEM_ACTOR` |
+| Huey periodic or background task | `SYSTEM_ACTOR` |
+| Fixture load / bootstrap script | `SYSTEM_ACTOR` |
+| `createsuperuser` | `SYSTEM_ACTOR` (default in `_UserManager.create_superuser`) |
+
+### How to use
+
+Import once and pass as `performed_by` on any auditable write:
+
+```python
+from core.constants import SYSTEM_ACTOR
+
+# create
+User.objects.create_user(username='bot', password='...', performed_by=SYSTEM_ACTOR)
+
+# update
+instance.save(performed_by=SYSTEM_ACTOR)
+User.objects.filter(pk=instance.pk).update(is_active=False, performed_by=SYSTEM_ACTOR)
+
+# soft delete
+instance.delete(performed_by=SYSTEM_ACTOR)
+```
+
+In a management command:
+
+```python
+from django.core.management.base import BaseCommand
+from core.constants import SYSTEM_ACTOR
+from core.models import User
+
+class Command(BaseCommand):
+    def handle(self, *args, **options):
+        User.objects.create_user(
+            username='service',
+            password='...',
+            performed_by=SYSTEM_ACTOR,
+        )
+```
+
+In a Huey task:
+
+```python
+from core.constants import SYSTEM_ACTOR
+
+@djhuey.db_task()
+def reconcile_records():
+    for row in queryset:
+        row.save(performed_by=SYSTEM_ACTOR)
+```
+
+### Do not use for
+
+- `login()`, session auth, or anything that treats `performed_by` as `request.user`
+- Permission checks (`user.has_perm(...)`, `DjangoModelPermissions`)
+- Foreign keys or relations that expect a saved `User` row
+
+For those cases, load or create a real user in the database.
+
+### Sentinel pattern (optional)
+
+The project uses an unsaved `User` because `_validate_performed_by` expects an object with `username`. If you want to avoid touching the ORM model at all, replace `SYSTEM_ACTOR` with a minimal sentinel that exposes the same attribute — for example:
+
+```python
+from types import SimpleNamespace
+
+SYSTEM_ACTOR = SimpleNamespace(username='system')
+```
+
+Only do this if every call site reads `performed_by.username` and never passes the actor into Django auth APIs.
+
 ## DRF Reference
 
 ### Permissions
@@ -307,6 +358,8 @@ permission_classes = [permissions.factory.permissions_class("auth.view_group")]
 ```
 
 Use `DjangoModelPermissions` for model CRUD permissions and `permissions.factory.permissions_class(...)` for a specific Django permission codename.
+
+With stock DRF `DjangoModelPermissions`, safe methods (`GET`, `HEAD`, `OPTIONS`) require an authenticated user but **no** Django model permission codename. Unsafe methods map to `add` / `change` / `delete`. `UserViewSet` additionally uses `core.view_user` in `get_queryset()` to decide whether list/retrieve spans all users or only `request.user`.
 
 ### Pagination
 
@@ -325,7 +378,26 @@ Per-endpoint limits:
 pagination_class = pagination.factory.limit_offset_class(maximum_limit=200)
 ```
 
-Set `pagination_class = None` for small fixed lists such as permission metadata.
+Set `pagination_class = None` for small fixed catalog endpoints such as `GET /api/permissions/` (global permission list).
+
+### Filtering, search, and ordering
+
+This project enables these filter backends globally (see `config/settings.py`):
+
+- `DjangoFilterBackend` — structured query filters via `filterset_class`
+- `SearchFilter` — free-text search via `?search=...`
+- `OrderingFilter` — ordering via `?ordering=field` / `?ordering=-field`
+
+Usage guidelines:
+
+- **Structured filters**: define a `django_filters.FilterSet` next to the viewset and set `filterset_class`.
+  - Example: `is_active=true`, `groups=<id>` on list endpoints that support those filters.
+- **Search**: set `search_fields = [...]` on the viewset.
+  - Example: `GET /api/users/?search=admin`
+- **Ordering**: set `ordering_fields = [...]` and (optionally) default `ordering = [...]`.
+  - Example: `GET /api/users/?ordering=-date_joined`
+
+Prefer `FilterSet` for typed filters (booleans, dates, FK/M2M ids) and reserve `?search=` for text matching.
 
 ### Mixins
 
@@ -523,6 +595,32 @@ Custom actions (for example `UserViewSet.update_self`) call the serializer steps
 
 `serializer.save(**extra)` merges `extra` into `validated_data` before `create()` or `update()`.
 
+## Authentication
+
+JWT auth uses `rest_framework_simplejwt` with token blacklist support. Token obtain and refresh endpoints are throttled to `5/minute` per IP.
+
+**Obtain tokens** — `POST /api/token/` with JSON body (camelCase keys accepted):
+
+```json
+{ "username": "admin", "password": "..." }
+```
+
+**Refresh** — `POST /api/token/refresh/` with `{ "refresh": "..." }`.
+
+**Logout** — `POST /api/token/logout/` with `{ "refresh": "..." }` to blacklist the refresh token.
+
+Self-service password change (`PUT /api/users/me/password/`) and avatar presigned upload (`POST /api/users/me/avatar/presigned-upload-url/`) are throttled to `10/minute` per authenticated user.
+
+Token payload claims are camelized to match API JSON (`core/serializers/auth.py`). Send the access token on protected requests:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+Protected viewsets default to `JWTAuthentication`. Use `permission_classes = [permissions.IsAuthenticated]` or `DjangoModelPermissions` on viewsets as needed.
+
+**JWT lifetimes** — access token lifetime is `30 days` when `DEBUG` is on (`ENV=LOCAL`) and `5 minutes` otherwise. Refresh token lifetime is `7 days`. Rotation and blacklist on refresh are enabled.
+
 ## Integrations
 
 ### Object storage
@@ -545,11 +643,11 @@ Reusable serializers live in `core/serializers/common/file.py`:
 | `FilePresignedUploadUrlSerializer` | Create pending `FileAsset`, return presigned upload URL |
 | `FileAttachSerializer` | Validate uploaded object in MinIO and attach to a model |
 
-Subclass or pass `is_public` / `file_name_validator` for endpoint-specific rules. `UserAvatarUploadUrlSerializer` and `UserAvatarSelfUpdateSerializer` are thin wrappers over these bases.
+Subclass with `is_public` or override fields for endpoint-specific rules. `UserAvatarUploadUrlSerializer` sets `is_public` and validates `file_name` with `ImageFileNameValidator`. `UserAvatarSelfUpdateSerializer` sets `field_name` and attaches via the shared attach flow.
 
 ### Caching
 
-Django cache is dummy cache locally and Redis in production. `utils.cache` provides:
+Django cache is dummy cache when `DEBUG` is on (`ENV=LOCAL`) and Redis when `DEBUG` is off (`STAGING`, `PRODUCTION`). `utils.cache` provides:
 
 - `@cached(base_key, ttl, vary_on_args=True)` to cache function results
 - `clear_cache(base_key)` to invalidate all variants for a base key
@@ -591,89 +689,39 @@ python manage.py dumpdata core --indent 2 > core-fixture.json
 
 Avoid dumping secrets, production credentials, tokens, or sensitive user data.
 
-## System actor
+## Appendix
 
-Auditable models require `performed_by` on every write. HTTP viewsets pass `request.user`; offline flows (management commands, Huey tasks, fixtures, migrations) have no caller.
+### Internationalization
 
-`core/constants.py` exports `SYSTEM_ACTOR` — an **unsaved** `User(username='system')`. It is never inserted into the database. Audit fields store the string `'system'` via `performed_by.username`.
+DRF uses Django's translation system for built-in exception and serializer validation messages. This project enables per-request language negotiation with `django.middleware.locale.LocaleMiddleware`, so API clients can set `Accept-Language`, for example:
 
-### When to use
-
-| Context | Actor |
-|---------|--------|
-| Viewset / API handler | `request.user` |
-| Serializer called from a viewset | `serializer.save(performed_by=request.user)` |
-| Management command | `SYSTEM_ACTOR` |
-| Huey periodic or background task | `SYSTEM_ACTOR` |
-| Fixture load / bootstrap script | `SYSTEM_ACTOR` |
-| `createsuperuser` | `SYSTEM_ACTOR` (default in `_UserManager.create_superuser`) |
-
-### How to use
-
-Import once and pass as `performed_by` on any auditable write:
-
-```python
-from core.constants import SYSTEM_ACTOR
-
-# create
-User.objects.create_user(username='bot', password='...', performed_by=SYSTEM_ACTOR)
-
-# update
-instance.save(performed_by=SYSTEM_ACTOR)
-User.objects.filter(pk=instance.pk).update(is_active=False, performed_by=SYSTEM_ACTOR)
-
-# soft delete
-instance.delete(performed_by=SYSTEM_ACTOR)
+```http
+Accept-Language: vi
+Accept-Language: en
 ```
 
-In a management command:
+Supported languages are configured in `config/settings.py` as Vietnamese (`vi`) and English (`en`). The default comes from `LANGUAGE_CODE` and falls back to `vi`.
+
+Project-owned user-facing strings should be wrapped with `gettext_lazy`:
 
 ```python
-from django.core.management.base import BaseCommand
-from core.constants import SYSTEM_ACTOR
-from core.models import User
+from django.utils.translation import gettext_lazy as _
 
-class Command(BaseCommand):
-    def handle(self, *args, **options):
-        User.objects.create_user(
-            username='service',
-            password='...',
-            performed_by=SYSTEM_ACTOR,
-        )
+raise serializers.ValidationError(_("File does not exist."))
 ```
 
-In a Huey task:
+Third-party message overrides live under `i18n/`, grouped by source package such as `drf.py` and `simplejwt.py`. Add new plugin overrides in a dedicated module so `makemessages` keeps those `msgid`s in the project catalog without patching installed packages.
 
-```python
-from core.constants import SYSTEM_ACTOR
+Translation catalogs live under `locale/`. Commit only the `.po` source files; `.mo` files are compiled locally or during Docker build and are not tracked in git. After adding or changing translated strings, refresh and compile catalogs:
 
-@djhuey.db_task()
-def reconcile_records():
-    for row in queryset:
-        row.save(performed_by=SYSTEM_ACTOR)
+```bash
+python manage.py makemessages -l vi
+python manage.py compilemessages
 ```
 
-### Do not use for
+Docker builds compile catalogs automatically. For local development, install a current GNU gettext so Django can find compatible `msgfmt` and `msgmerge` commands. On Windows, prefer `winget install --id mlocati.GetText -e`; the older GnuWin32 gettext package does not support Django's `makemessages` options.
 
-- `login()`, session auth, or anything that treats `performed_by` as `request.user`
-- Permission checks (`user.has_perm(...)`, `DjangoModelPermissions`)
-- Foreign keys or relations that expect a saved `User` row
-
-For those cases, load or create a real user in the database.
-
-### Sentinel pattern (optional)
-
-The project uses an unsaved `User` because `_validate_performed_by` expects an object with `username`. If you want to avoid touching the ORM model at all, replace `SYSTEM_ACTOR` with a minimal sentinel that exposes the same attribute — for example:
-
-```python
-from types import SimpleNamespace
-
-SYSTEM_ACTOR = SimpleNamespace(username='system')
-```
-
-Only do this if every call site reads `performed_by.username` and never passes the actor into Django auth APIs.
-
-## Audit trail / event log (example)
+### Audit trail / event log (example)
 
 `AuditableModel` stores who changed a row and when, but not *what* changed. For a separate activity feed or compliance log, add an append-only event model and write to it from serializers or signals.
 
@@ -714,7 +762,7 @@ class AuditEventViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
 Use nested routes such as `/api/users/{id}/audit-events/` when the log is scoped to one resource, instead of embedding events in paginated list responses.
 
-## Code formatting (Ruff)
+### Code formatting (Ruff)
 
 [`pyproject.toml`](pyproject.toml) configures [Ruff](https://docs.astral.sh/ruff/) for import sorting (`I`) and formatting.
 

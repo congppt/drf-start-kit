@@ -35,7 +35,7 @@ USE_X_FORWARDED_HOST = True
 ALLOWED_HOSTS = env.ALLOWED_HOSTS
 
 CORS_ALLOWED_ORIGINS = env.ALLOWED_ORIGINS
-CORS_ALLOW_ALL_ORIGINS = env.IS_LOCAL or not env.ALLOWED_ORIGINS
+CORS_ALLOW_ALL_ORIGINS = not env.IS_PRODUCTION or not env.ALLOWED_ORIGINS
 # Application definition
 
 INSTALLED_APPS = [
@@ -204,8 +204,8 @@ HUEY = {
 
 SIMPLE_JWT = {
     "TOKEN_OBTAIN_SERIALIZER": "core.serializers.auth.TokenSerializer",
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5) if env.IS_PRODUCTION else timedelta(days=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7) if env.IS_PRODUCTION else timedelta(days=30),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=30) if DEBUG else timedelta(minutes=5),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "TOKEN_TYPE_CLAIM": "tokenType",

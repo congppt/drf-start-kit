@@ -4,7 +4,6 @@ from huey.signals import SIGNAL_CANCELED, SIGNAL_ERROR, SIGNAL_LOCKED, SIGNAL_RE
 from utils.log import logger
 
 from .gc import *
-from .token import *
 
 
 @djhuey.signal(SIGNAL_ERROR, SIGNAL_LOCKED, SIGNAL_CANCELED, SIGNAL_REVOKED)

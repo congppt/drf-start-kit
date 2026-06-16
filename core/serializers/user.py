@@ -109,6 +109,8 @@ class PasswordSelfChangeSerializer(PasswordChangeSerializer):
 
 
 class UserAvatarUploadUrlSerializer(FilePresignedUploadUrlSerializer):
+    file_name = serializers.CharField(validators=[validators.ImageFileNameValidator()])
+
     is_public = AVATAR_IS_PUBLIC
 
 

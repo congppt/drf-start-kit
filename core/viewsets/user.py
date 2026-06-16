@@ -1,4 +1,5 @@
 import django_filters
+from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -21,8 +22,8 @@ class UserViewSet(
     mixins.UpdateModelMixin,
     viewsets.GenericViewSet,
 ):
-    queryset = models.User.objects.prefetch_related("attachments__file").all()
-    permission_classes = [permissions.UserPermission]
+    queryset = models.User.objects.prefetch_related("attachments__file", "groups").all()
+    permission_classes = [permissions.DjangoModelPermissions]
     filterset_class = UserFilter
     pagination_class = pagination.factory.limit_offset_class(maximum_limit=200)
     search_fields = ["username", "email", "first_name", "last_name"]
@@ -52,6 +53,8 @@ class UserViewSet(
                 return serializers.UserAvatarUploadUrlSerializer
             case "change_avatar_self":
                 return serializers.UserAvatarSelfUpdateSerializer
+            case "user_permissions" | "permissions_self":
+                return serializers.PermissionSerializer
             case _:
                 return serializers.UserSerializer
 
@@ -75,25 +78,19 @@ class UserViewSet(
         return Response(serializer.data)
 
     @action(
-        detail=True,
-        methods=["get"],
-        url_path="permissions",
-    )
-    def user_permissions(self, request, pk=None):
-        user = self.get_object()
-        queryset = user.get_all_permissions_queryset()
-        serializer = serializers.PermissionSerializer(queryset, many=True)
-        return Response(serializer.data)
-
-    @action(
         detail=False,
         methods=["get"],
         url_path="me/permissions",
         permission_classes=[permissions.IsAuthenticated],
     )
     def permissions_self(self, request):
-        queryset = request.user.get_all_permissions_queryset()
-        serializer = serializers.PermissionSerializer(queryset, many=True)
+        queryset = (
+            models.Permission.objects
+            .select_related("content_type")
+            .filter(Q(user=request.user) | Q(group__user=request.user))
+            .distinct()
+        )
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
     @action(
