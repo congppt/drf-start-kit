@@ -13,27 +13,3 @@ from .user import (
     UserSerializer,
     UserUpdateSerializer,
 )
-
-__all__ = [
-    # DRF Built-in Serializers
-    Serializer,
-    ModelSerializer,
-    # Auditable Model Based Serializers
-    AuditableModelSerializer,
-    ExcludeDeleteModelSerializer,
-    ExcludeAuditableModelSerializer,
-    #
-    GroupSerializer,
-    #
-    PermissionSerializer,
-    #
-    UserSerializer,
-    UserCreateSerializer,
-    UserUpdateSerializer,
-    UserSelfUpdateSerializer,
-    UserAvatarUploadUrlSerializer,
-    UserAvatarSelfUpdateSerializer,
-    PasswordChangeSerializer,
-    PasswordSelfChangeSerializer,
-    #
-]

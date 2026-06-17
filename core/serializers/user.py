@@ -5,26 +5,23 @@ from rest_framework import serializers
 
 from integrations.minio import minio
 
-from .. import models, validators
+from .. import models, usecases, validators
 from .common import ExcludeDeleteModelSerializer, FileAttachSerializer, FilePresignedUploadUrlSerializer
 from .group import GroupSerializer
 
 AVATAR_FIELD_NAME = models.User.AVATAR_FIELD_NAME
 AVATAR_IS_PUBLIC = models.User.AVATAR_IS_PUBLIC
 
-USER_PREFERENCES_SCHEMA = {
-    "theme": str,
-    "lang": str,
-}
+
+class UserPreferencesSerializer(serializers.Serializer):
+    theme = serializers.CharField()
+    lang = serializers.CharField()
 
 
 class UserSerializer(ExcludeDeleteModelSerializer):
     avatar_url = serializers.SerializerMethodField()
     groups = GroupSerializer(many=True, read_only=True)
-    preferences = serializers.JSONField(
-        validators=[validators.JSONSchemaValidator(USER_PREFERENCES_SCHEMA, strict=True)],
-        required=False,
-    )
+    preferences = UserPreferencesSerializer(required=False)
 
     class Meta:
         model = models.User
@@ -53,10 +50,7 @@ class UserCreateSerializer(UserSerializer):
         exclude = ["user_permissions", "last_login", "date_joined"]
 
     def create(self, validated_data: dict):
-        groups = validated_data.pop("groups")
-        with transaction.atomic():
-            user = models.User.objects.create_user(**validated_data)
-            user.groups.set(groups)
+        user = usecases.user.create(validated_data)
         return user
 
 
@@ -78,7 +72,7 @@ class UserUpdateSerializer(UserSerializer):
         return instance
 
 
-class UserSelfUpdateSerializer(UserSerializer):
+class UserSelfUpdateSerializer(UserUpdateSerializer):
     class Meta:
         model = models.User
         fields = ["first_name", "last_name", "email", "preferences"]

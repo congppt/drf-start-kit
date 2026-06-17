@@ -16,11 +16,9 @@ class UserFilter(django_filters.FilterSet):
 
 
 class UserViewSet(
-    mixins.ListModelMixin,
-    mixins.RetrieveModelMixin,
-    mixins.CreateModelMixin,
-    mixins.UpdateModelMixin,
-    viewsets.GenericViewSet,
+    mixins.CreateAuditableModelMixin,
+    mixins.UpdateAuditableModelMixin,
+    viewsets.ReadOnlyModelViewSet,
 ):
     queryset = models.User.objects.prefetch_related("attachments__file", "groups").all()
     permission_classes = [permissions.DjangoModelPermissions]
@@ -57,12 +55,6 @@ class UserViewSet(
                 return serializers.PermissionSerializer
             case _:
                 return serializers.UserSerializer
-
-    def perform_create(self, serializer):
-        serializer.save(performed_by=self.request.user)
-
-    def perform_update(self, serializer):
-        serializer.save(performed_by=self.request.user)
 
     @action(
         detail=False,

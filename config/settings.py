@@ -90,12 +90,6 @@ SPECTACULAR_SETTINGS = {
 
 JSON_CAMEL_CASE = {"RENDERER_CLASS": "drf_orjson_renderer.renderers.ORJSONRenderer"}
 
-custom_middlewares = []
-with suppress(ImportError):
-    BASE_PATH = "core.middlewares"
-    module = importlib.import_module(BASE_PATH)
-    custom_middlewares = [f"{BASE_PATH}.{middleware}" for middleware in getattr(module, "__all__", [])]
-
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     # 'django.contrib.sessions.middleware.SessionMiddleware',
@@ -106,9 +100,13 @@ MIDDLEWARE = [
     # 'django.contrib.auth.middleware.AuthenticationMiddleware',
     # 'django.contrib.messages.middleware.MessageMiddleware',
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    *custom_middlewares,
+    "core.middlewares.LoggingMiddleware",
     "djangorestframework_camel_case.middleware.CamelCaseMiddleWare",
 ]
+# Disable default logging configuration
+LOGGING = {
+    "version": 1,
+}
 
 ROOT_URLCONF = "config.urls"
 

@@ -85,5 +85,5 @@ class LoggingMiddleware:
 
     def process_exception(self, request, exception):
         extra = self.__extract_request_info(request)
-        logger.opt(exception=exception).exception(exception, extra=extra)
+        logger.opt(exception=exception).exception(str(exception), extra=extra)
         return None

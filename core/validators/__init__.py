@@ -31,46 +31,7 @@ from .common import (
     IPv4OrIPv6Validator,
     IPv4Validator,
     IPv6Validator,
-    JSONSchemaValidator,
     PhoneNumberValidator,
     SlugValidator,
     UnicodeSlugValidator,
 )
-
-__all__ = [
-    # Django Built-in Validators
-    MinLengthValidator,
-    MaxLengthValidator,
-    MinValueValidator,
-    MaxValueValidator,
-    StepValueValidator,
-    RegexValidator,
-    EmailValidator,
-    URLValidator,
-    FileExtensionValidator,
-    DecimalValidator,
-    ProhibitNullCharactersValidator,
-    DomainNameValidator,
-    # DRF Built-in Validators
-    UniqueValidator,
-    UniqueTogetherValidator,
-    UniqueForDateValidator,
-    UniqueForMonthValidator,
-    UniqueForYearValidator,
-    # Common Validators
-    IntegerValidator,
-    IntegerListValidator,
-    IPv4Validator,
-    IPv6Validator,
-    IPv4OrIPv6Validator,
-    SlugValidator,
-    UnicodeSlugValidator,
-    PhoneNumberValidator,
-    HexColorValidator,
-    FileSizeValidator,
-    ImageFileExtensionValidator,
-    ImageFileNameValidator,
-    DocumentFileNameValidator,
-    JSONSchemaValidator,
-    #
-]

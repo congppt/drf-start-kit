@@ -440,7 +440,6 @@ Import validators from `core.validators` (inside `core`, `from .. import validat
 | `ImageFileExtensionValidator` | Uploaded image file extensions |
 | `PhoneNumberValidator` | E.164 phone numbers (`+84901234567`) |
 | `HexColorValidator` | `#fff` or `#1a2b3c` colors |
-| `JSONSchemaValidator` | Dict keys mapped to types and/or nested validators; `strict=True` rejects extra keys |
 | `IntegerValidator` / `IntegerListValidator` | Integer or comma-separated integer lists |
 | `IPv4Validator` / `IPv6Validator` / `IPv4OrIPv6Validator` | IP address format |
 | `SlugValidator` / `UnicodeSlugValidator` | Slug format |
@@ -458,22 +457,14 @@ document_name = serializers.CharField(
     validators=[validators.DocumentFileNameValidator(['pdf', 'docx'])],
 )
 
-preferences = serializers.JSONField(
-    validators=[
-        validators.JSONSchemaValidator(
-            {
-                'theme': str,
-                'accentColor': validators.HexColorValidator(),
-                'fontSize': validators.MinValueValidator(8),
-                'notifications': bool,
-            },
-            strict=True,
-        ),
-    ],
-)
+class UserPreferencesSerializer(serializers.Serializer):
+    theme = serializers.CharField()
+    languague = serializers.CharField()
+
+preferences = UserPreferencesSerializer(required=False)
 ```
 
-Use field validators for simple constraints and serializer `validate_*` / `validate()` for checks that need request context, database state, or external services.
+Use nested serializers for structured JSON objects so DRF can return field-level errors. Use field validators for simple constraints and serializer `validate_*` / `validate()` for checks that need request context, database state, or external services.
 
 ## API Call Flow
 
