@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 from integrations.minio import minio
 
-from .. import models, usecases, validators
+from .. import models, validators
 from .common import ExcludeDeleteModelSerializer, FileAttachSerializer, FilePresignedUploadUrlSerializer
 from .group import GroupSerializer
 
@@ -50,7 +50,10 @@ class UserCreateSerializer(UserSerializer):
         exclude = ["user_permissions", "last_login", "date_joined"]
 
     def create(self, validated_data: dict):
-        user = usecases.user.create(validated_data)
+        groups = validated_data.pop("groups")
+        with transaction.atomic():
+            user = models.User.objects.create_user(**validated_data)
+            user.groups.set(groups)
         return user
 
 
@@ -63,12 +66,13 @@ class UserUpdateSerializer(UserSerializer):
 
     def update(self, instance: models.User, validated_data: dict):
         performed_by = validated_data.pop("performed_by")
-        groups = validated_data.pop("groups", [])
+        groups = validated_data.pop("groups", None)
         for key, value in validated_data.items():
             setattr(instance, key, value)
         with transaction.atomic():
             instance.save(performed_by=performed_by)
-            instance.groups.set(groups)
+            if groups is not None:
+                instance.groups.set(groups)
         return instance
 
 

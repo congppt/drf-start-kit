@@ -141,6 +141,8 @@ core/                   Main application package
   pagination/           Pagination classes and factories
   mixins/               DRF and auditable model mixins
   validators/           Django, DRF, and project validators
+  usecases/             Optional write orchestration for complex business flows
+  services/             Optional reusable domain and infrastructure helpers
   tasks/                Huey background and periodic tasks
   fixtures/             Django fixture files for seed data
   migrations/           Django schema migrations
@@ -168,6 +170,31 @@ Registered URL modules today: `auth`, `health`, `user`, `group`, `permission`.
 - APIs use camelCase JSON through `djangorestframework-camel-case`; Python code stays snake_case.
 - Import through `core` package modules that re-export shared symbols instead of pulling the same names from upstream libraries. Inside `core`, use relative package imports and access symbols on those namespaces — for example `from .. import models`, `serializers`, `validators`, `permissions`, `pagination`, and `mixins`, then `permissions.DjangoModelPermissions`, `validators.MinValueValidator`, `serializers.ModelSerializer`. The package `__init__.py` files own the re-exports from Django, DRF, and project code; resource modules (viewsets, serializers, and so on) should not import re-exported symbols directly from `rest_framework.*` or `django.core.validators` when they are available on a `core` package.
 - Group imports in this order: standard library, third-party packages (only symbols not re-exported by `core`, such as `rest_framework.status` or `django.db.transaction`), then local `core` package imports.
+- Keep simple writes in serializers (`create` / `update`, `validate_*`). Use `core/usecases` and `core/services` only when a flow needs multi-entity transactions, reuse from tasks or commands, or business logic that outgrows a single serializer. GET/list/retrieve stay in viewsets and querysets.
+
+## Use Cases and Services
+
+For most endpoints, DRF serializers are enough. Add layers when you see at least one of these signals:
+
+- One write touches multiple entities inside a single transaction
+- The same logic must run from an API endpoint and a background task or management command
+- Serializer `create` / `update` is becoming hard to read or test
+
+Suggested layout:
+
+```text
+core/usecases/<flow>.py     orchestration, @transaction.atomic at the outer boundary
+core/services/<entity>.py     focused entity or infrastructure operations
+core/services/common/         shared helpers (files, notifications, ...)
+```
+
+Call direction:
+
+```text
+viewset -> serializer (validate) -> usecase (optional) -> service (optional) -> model
+```
+
+Do not route simple CRUD through use cases just for consistency. Read endpoints do not need use cases.
 
 ## Creating a Complete Viewset
 
