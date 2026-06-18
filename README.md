@@ -32,6 +32,7 @@ A starter kit for building APIs with Django REST Framework. It provides a ready-
 **Reference**
 
 - [DRF Reference](#drf-reference)
+- [Date and time](#date-and-time)
 - [API Call Flow](#api-call-flow)
 - [Authentication](#authentication)
 - [Integrations](#integrations)
@@ -186,6 +187,7 @@ Registered URL modules today: `auth`, `health`, `meta`, `user`, `group`, `permis
 - Group imports in this order: standard library, third-party packages (only symbols not re-exported by `core`, such as `rest_framework.status` or `django.db.transaction`), then local `core` package imports.
 - Keep simple writes in serializers (`create` / `update`, `validate_*`). Use `core/usecases` and `core/services` only when a flow needs multi-entity transactions, reuse from tasks or commands, or business logic that outgrows a single serializer. GET/list/retrieve stay in viewsets and querysets.
 - Expose static enum options through `MetaViewSet` (see [Choice API](#choice-api)). Use `ChoiceSerializer` subclasses on resource viewsets for database-backed option lists.
+- Use timezone-aware datetimes in Django code — `timezone.now()`, `make_aware()`, `localtime()` (see [Date and time](#date-and-time)).
 
 ## Use Cases and Services
 
@@ -566,6 +568,182 @@ preferences = UserPreferencesSerializer(required=False)
 ```
 
 Use nested serializers for structured JSON objects so DRF can return field-level errors. Use field validators for simple constraints and serializer `validate_*` / `validate()` for checks that need request context, database state, or external services.
+
+## Date and time
+
+This project runs with timezone support enabled:
+
+```python
+TIME_ZONE = "Asia/Ho_Chi_Minh"
+USE_TZ = True
+```
+
+With `USE_TZ = True`, Django stores `DateTimeField` values in UTC and converts them when needed. API responses use ISO 8601 strings (typically with a `Z` or offset). Do not assume the database stores local `Asia/Ho_Chi_Minh` wall-clock values.
+
+### Django timezone helpers
+
+Use `django.utils.timezone` for **awareness and conversion**, not for duration math. `timezone.timedelta` is the same class as `datetime.timedelta` — prefer importing duration types from `datetime`.
+
+| Function | Use when |
+|----------|----------|
+| `timezone.now()` | You need the current instant as an aware datetime for saves, comparisons, or API values |
+| `timezone.is_aware()` / `timezone.is_naive()` | You need to guard against mixing naive and aware values |
+| `timezone.make_aware(dt, timezone=None)` | You have a **naive** datetime that represents local wall time and must become aware before saving or comparing |
+| `timezone.localtime(dt, timezone=None)` | You need to display or compute in `TIME_ZONE` (or another zone) |
+| `timezone.localdate(dt, timezone=None)` | You need today's **date** in a timezone (for example "records created today" in business local time) |
+
+```python
+from datetime import datetime, timedelta
+from django.utils import timezone
+
+# current instant — use everywhere you would be tempted to call datetime.now()
+now = timezone.now()
+
+# naive input from a legacy source or parsed date + time without offset
+starts_at = timezone.make_aware(datetime(2026, 6, 18, 9, 0))
+
+# presentation / local calendar rules
+local_now = timezone.localtime(now)
+today_local = timezone.localdate(now)
+
+if timezone.is_naive(starts_at):
+    starts_at = timezone.make_aware(starts_at)
+```
+
+| Do | Don't |
+|----|-------|
+| `timezone.now()` | `datetime.now()` or `datetime.utcnow()` |
+| `timezone.make_aware()` on naive local datetimes before ORM use | Saving or filtering with naive datetimes when `USE_TZ = True` |
+| `timezone.localtime()` / `timezone.localdate()` for display or local calendar rules | Hard-coding `+7` hour offsets in application code |
+
+`datetime.now()` returns a **naive** local datetime. With `USE_TZ = True`, comparing or saving naive values leads to warnings, wrong query results, or subtle bugs.
+
+DRF already parses ISO 8601 request datetimes into aware values. Reach for `make_aware()` mainly when you construct naive `datetime` objects yourself (for example from separate `date` and `time` fields).
+
+Avoid `timezone.make_naive()` in normal application code. Keep datetimes aware through the stack and convert only at the presentation boundary with `localtime()`.
+
+### Duration arithmetic
+
+Add and subtract **durations** with the standard library or `dateutil`, not with Django helpers:
+
+```python
+from datetime import timedelta
+from django.utils import timezone
+
+expires_at = timezone.now() + timedelta(minutes=10)
+cutoff = timezone.now() - timedelta(days=7)
+```
+
+### Model fields
+
+Prefer Django to stamp timestamps:
+
+```python
+created = models.DateTimeField(auto_now_add=True)
+updated = models.DateTimeField(auto_now=True)
+```
+
+When you need an explicit default on create, pass the callable, not the result:
+
+```python
+# correct
+deleted = models.DateTimeField(null=True, blank=True)
+
+def mark_deleted(self):
+    self.deleted = timezone.now()
+```
+
+```python
+# wrong — evaluates once at import time
+deleted = models.DateTimeField(default=timezone.now())
+```
+
+See `AuditableModel` in `core/models/common/audit.py` for soft-delete timestamps.
+
+### Queryset filters and calculations
+
+Subtract or add `timedelta` from `timezone.now()` in the database layer:
+
+```python
+from datetime import timedelta
+from django.utils import timezone
+
+# pending uploads older than FILE_ORPHANED_INTERVAL — core/tasks/gc.py
+created__lt=timezone.now() - timedelta(seconds=settings.FILE_ORPHANED_INTERVAL)
+
+# expired JWT cleanup
+expires_at__lt=timezone.now()
+```
+
+For relative windows in list filters, compute the boundary once, then filter:
+
+```python
+since = timezone.now() - timedelta(days=30)
+queryset.filter(created__gte=since)
+```
+
+Keep units explicit (`seconds=`, `minutes=`, `days=`). Do not multiply hours by hand unless you document why.
+
+### `timedelta` vs `relativedelta`
+
+`datetime.timedelta` counts a **fixed** number of seconds. One day is always 24 hours; use it for TTLs, grace periods, token expiry, and upload timeouts.
+
+`relativedelta` from `dateutil` (already in `requirements.txt`) counts **calendar** units. Months and years have different lengths, so `timedelta(days=30)` is not the same as "one month ago".
+
+| Need | Use | Example |
+|------|-----|---------|
+| Upload expires in 10 minutes | `timedelta` | `timezone.now() + timedelta(minutes=10)` |
+| Records from the last 7 days | `timedelta` | `timezone.now() - timedelta(days=7)` |
+| Records since the start of last calendar month | `relativedelta` | see below |
+| Subscription renews every month / year | `relativedelta` | `timezone.now() + relativedelta(months=1)` |
+
+```python
+from datetime import timedelta
+from dateutil.relativedelta import relativedelta
+from django.utils import timezone
+
+# wrong for "one month ago" — always 30 days, ignores month length
+since = timezone.now() - timedelta(days=30)
+
+# correct for calendar-month windows
+since = timezone.now() - relativedelta(months=1)
+
+# billing period end, anniversary dates, "same day next month"
+period_end = timezone.now() + relativedelta(months=1)
+fiscal_year_start = timezone.localtime(timezone.now()).replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+```
+
+Start from `timezone.now()` (or an aware datetime from the database) so the result stays timezone-aware. Do not build `relativedelta` arithmetic on naive datetimes.
+
+Use `relativedelta` only when the business rule is calendar-based. For fixed intervals defined in settings (for example `FILE_ORPHANED_INTERVAL`), keep using `timedelta`.
+
+### Serializers and API input
+
+DRF `DateTimeField` accepts ISO 8601 input and works with aware datetimes. When building response values in serializer code:
+
+```python
+from datetime import timedelta
+from django.utils import timezone
+
+# core/serializers/common/file.py
+"expires_at": timezone.now() + timedelta(seconds=self.upload_ttl_seconds)
+```
+
+Validate business rules in the serializer (`expires_at` must be in the future, `end` after `start`, and so on) using aware datetimes from `timezone.now()`.
+
+### Display vs storage
+
+- **Store and compare** in UTC using aware datetimes (`timezone.now()`).
+- **Show local time** only at the presentation boundary (templates, emails, reports) with `timezone.localtime(value)`.
+- **API JSON** should stay in UTC/ISO 8601; let the client format for the user's locale.
+
+### Quick checklist
+
+1. `USE_TZ` stays `True` unless you have a strong reason to change it.
+2. Use `timezone.now()`, `make_aware()`, `localtime()`, and `localdate()` from `django.utils.timezone` for awareness and conversion.
+3. Never call `datetime.now()` or `datetime.utcnow()` for persistence or ORM filters.
+4. Use `datetime.timedelta` for fixed durations; use `relativedelta` for calendar months, years, or same-day-next-month rules.
+5. After changing datetime logic, test edge cases around midnight, month boundaries, and daylight saving if you filter on local calendar dates.
 
 ## API Call Flow
 
