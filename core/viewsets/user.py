@@ -77,8 +77,7 @@ class UserViewSet(
     )
     def permissions_self(self, request):
         queryset = (
-            models.Permission.objects
-            .select_related("content_type")
+            models.Permission.objects.select_related("content_type")
             .filter(Q(user=request.user) | Q(group__user=request.user))
             .distinct()
         )
