@@ -33,6 +33,9 @@ class FilePresignedUploadUrlSerializer(serializers.Serializer):
     def create(self, validated_data: dict):
         performed_by = validated_data.pop("performed_by")
         content_type, _ = mimetypes.guess_type(validated_data["file_name"])
+        if not content_type:
+            # MinIO default content type
+            content_type = "application/octet-stream"
         file_asset = models.FileAsset.objects.create(
             name=validated_data["file_name"],
             content_type=content_type,

@@ -58,6 +58,6 @@ HUEY_WORKERS = int(os.getenv("HUEY_WORKERS", "6"))
 if HUEY_WORKERS < 1:
     raise EnvironmentError("HUEY_WORKERS must be at least 1")
 
-# Per Gunicorn process (sync worker ≈ one concurrent request).
+# Per Gunicorn process (sync worker ≈ one concurrent request). Safety overhead
 DB_POOL_MIN_SIZE = 1
 DB_POOL_MAX_SIZE = 4

@@ -52,20 +52,20 @@ msgstr "Tệp đã tải lên không hợp lệ. Vui lòng tải lại tệp."
 msgid "This file type is not supported. Please upload another file."
 msgstr "Loại tệp này không được hỗ trợ. Vui lòng tải lên tệp khác."
 
-#: .\core\validators\common\file.py:19 .\core\validators\common\file.py:20
-#: .\core\validators\common\file.py:34
+#: .\core\validators\common\attachment.py:19 .\core\validators\common\attachment.py:20
+#: .\core\validators\common\attachment.py:34
 msgid "The selected file is invalid."
 msgstr "Tệp đã chọn không hợp lệ."
 
-#: .\core\validators\common\file.py:21
+#: .\core\validators\common\attachment.py:21
 msgid "The selected file is too large."
 msgstr "Tệp đã chọn quá lớn."
 
-#: .\core\validators\common\file.py:81
+#: .\core\validators\common\attachment.py:81
 msgid "This image file is not supported. Please upload another image."
 msgstr "Tệp ảnh này không được hỗ trợ. Vui lòng tải lên ảnh khác."
 
-#: .\core\validators\common\file.py:117
+#: .\core\validators\common\attachment.py:117
 msgid "This document file is not supported. Please upload another document."
 msgstr "Tệp tài liệu này không được hỗ trợ. Vui lòng tải lên tài liệu khác."
 

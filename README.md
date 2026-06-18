@@ -725,7 +725,7 @@ DRF `DateTimeField` accepts ISO 8601 input and works with aware datetimes. When 
 from datetime import timedelta
 from django.utils import timezone
 
-# core/serializers/common/file.py
+# core/serializers/common/attachment.py
 "expires_at": timezone.now() + timedelta(seconds=self.upload_ttl_seconds)
 ```
 
@@ -906,7 +906,7 @@ Protected viewsets default to `JWTAuthentication`. Use `permission_classes = [pe
 
 The avatar flow in `UserViewSet` demonstrates the pattern: create a pending `FileAsset`, return a presigned upload URL, validate the uploaded object with MinIO, attach it to the user, and mark the file as ready.
 
-Reusable serializers live in `core/serializers/common/file.py`:
+Reusable serializers live in `core/serializers/common/attachment.py`:
 
 | Serializer | Role |
 |------------|------|

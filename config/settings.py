@@ -10,8 +10,6 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
-import importlib
-from contextlib import suppress
 from pathlib import Path
 
 import env
@@ -182,7 +180,7 @@ HUEY = {
         host=env.DB_HOST,
         port=env.DB_PORT,
         **env.DB_OPTIONS,
-        max_connections=env.HUEY_WORKERS + 5,
+        max_connections=env.HUEY_WORKERS + 5, # Safety overhead
         stale_timeout=300,
         timeout=30,
     ),
@@ -234,7 +232,6 @@ PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",
     "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
-    "django.contrib.auth.hashers.Argon2PasswordHasher",
     "django.contrib.auth.hashers.ScryptPasswordHasher",
 ]
 

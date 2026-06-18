@@ -1,4 +1,4 @@
-from .file import (
+from .attachment import (
     DocumentFileNameValidator,
     FileSizeValidator,
     ImageFileExtensionValidator,
