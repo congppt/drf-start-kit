@@ -36,8 +36,8 @@ ALLOWED_HOSTS = env.ALLOWED_HOSTS
 
 CORS_ALLOWED_ORIGINS = env.ALLOWED_ORIGINS
 CORS_ALLOW_ALL_ORIGINS = not env.IS_PRODUCTION or not env.ALLOWED_ORIGINS
-# Application definition
 
+# Application definition
 INSTALLED_APPS = [
     # 'django.contrib.admin',
     "django.contrib.auth",
@@ -144,9 +144,10 @@ DATABASES = {
         "CONN_HEALTH_CHECKS": True,
         "OPTIONS": {
             "pool": {
-                "min_size": 2,
-                "max_size": 10,
-            }
+                "min_size": env.DB_POOL_MIN_SIZE,
+                "max_size": env.DB_POOL_MAX_SIZE,
+            },
+            **env.DB_OPTIONS,
         },
     }
 }
@@ -180,7 +181,8 @@ HUEY = {
         password=env.DB_PASSWORD,
         host=env.DB_HOST,
         port=env.DB_PORT,
-        max_connections=30,
+        **env.DB_OPTIONS,
+        max_connections=env.HUEY_WORKERS + 5,
         stale_timeout=300,
         timeout=30,
     ),

@@ -1,5 +1,5 @@
 import os
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from dotenv import load_dotenv
 
@@ -14,6 +14,13 @@ IS_LOCAL = __ENV == "LOCAL"
 IS_STAGING = __ENV == "STAGING"
 IS_PRODUCTION = __ENV == "PRODUCTION"
 
+
+def _db_url_options(query: str) -> dict[str, str]:
+    if not query:
+        return {}
+    return {key: values[0] for key, values in parse_qs(query).items() if values}
+
+
 DB_URL = os.getenv("DB_URL")
 if not DB_URL:
     raise EnvironmentError("DB_URL is not configured")
@@ -23,6 +30,7 @@ DB_PORT = __parsed_db_url.port
 DB_USER = __parsed_db_url.username
 DB_PASSWORD = __parsed_db_url.password
 DB_NAME = __parsed_db_url.path.lstrip("/")
+DB_OPTIONS = _db_url_options(__parsed_db_url.query)
 
 REDIS_URL = os.getenv("REDIS_URL")
 if not REDIS_URL and not IS_LOCAL:
@@ -49,3 +57,7 @@ ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",
 HUEY_WORKERS = int(os.getenv("HUEY_WORKERS", "6"))
 if HUEY_WORKERS < 1:
     raise EnvironmentError("HUEY_WORKERS must be at least 1")
+
+# Per Gunicorn process (sync worker ≈ one concurrent request).
+DB_POOL_MIN_SIZE = 1
+DB_POOL_MAX_SIZE = 4
