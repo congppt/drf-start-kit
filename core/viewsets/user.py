@@ -54,6 +54,8 @@ class UserViewSet(
             case "user_permissions" | "permissions_self":
                 return serializers.PermissionSerializer
             case _:
+                if self.request.query_params.get("for") == "options":
+                    return serializers.UserChoicesSerializer
                 return serializers.UserSerializer
 
     @action(

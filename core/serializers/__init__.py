@@ -2,6 +2,7 @@ from rest_framework.serializers import ModelSerializer, Serializer
 
 from .common import (
     AuditableModelSerializer,
+    ChoiceLimitOffsetSerializer,
     ExcludeAuditableModelSerializer,
     ExcludeDeleteModelSerializer,
 )
@@ -12,6 +13,7 @@ from .user import (
     PasswordSelfChangeSerializer,
     UserAvatarSelfUpdateSerializer,
     UserAvatarUploadUrlSerializer,
+    UserChoicesSerializer,
     UserCreateSerializer,
     UserSelfUpdateSerializer,
     UserSerializer,

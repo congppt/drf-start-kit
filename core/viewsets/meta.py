@@ -1,32 +1,38 @@
-from django.db import models
+from django.utils.text import camel_case_to_spaces, slugify
 from django.utils.translation import gettext_lazy as _
 from rest_framework import exceptions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from ..models.attachment import UploadStatus
+from .. import models, serializers
 
 
-def __to_limit_offset_response(choices: list[dict]) -> dict:
-    return {"count": len(choices), "next": None, "previous": None, "results": choices}
+def _build_choice_registry(*choice_types: type[models.Choices]) -> dict[str, type[models.Choices]]:
+    registry: dict[str, type[models.Choices]] = {}
+    for type_ in choice_types:
+        slug = slugify(camel_case_to_spaces(type_.__name__))
+        if slug in registry:
+            raise ValueError(f"Duplicate choice slug {slug!r} for {type_.__name__}")
+        registry[slug] = type_
+    return registry
 
 
-CHOICE_REGISTRY: dict[str, type[models.TextChoices]] = {
-    "upload-status": __to_limit_offset_response([
-        {"value": status.value, "label": status.label}
-        for status in UploadStatus
-    ]),
-}
+def _to_limit_offset_data(choices: type[models.Choices]) -> dict:
+    return {"count": len(choices), "next": None, "previous": None, "results": list(choices)}
+
+
+CHOICE_REGISTRY = _build_choice_registry(models.UploadStatus)
 
 
 class MetaViewSet(viewsets.GenericViewSet):
-    @action(detail=False, methods=["get"], url_path="choices")
-    def all_choices(self, request):
-        return Response(CHOICE_REGISTRY)
+    def get_serializer_class(self):
+        return serializers.ChoiceLimitOffsetSerializer
 
     @action(detail=False, methods=["get"], url_path=r"choices/(?P<key>[\w-]+)")
-    def choice(self, request, key: str):
-        choices = CHOICE_REGISTRY.get(key)
-        if choices is None:
+    def choices(self, request, key: str):
+        choices_class = CHOICE_REGISTRY.get(key)
+        if choices_class is None:
             raise exceptions.NotFound(_("Choices not found."))
-        return Response(choices)
+        data = _to_limit_offset_data(choices_class)
+        serializer = self.get_serializer(data)
+        return Response(serializer.data)

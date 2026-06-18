@@ -11,6 +11,7 @@ A starter kit for building APIs with Django REST Framework. It provides a ready-
 | JWT refresh | `POST /api/token/refresh/` |
 | JWT logout | `POST /api/token/logout/` |
 | Current user permissions | `GET /api/users/me/permissions/` |
+| Choice metadata | `GET /api/meta/choices/{key}/` |
 
 ## Table of Contents
 
@@ -24,6 +25,7 @@ A starter kit for building APIs with Django REST Framework. It provides a ready-
 - [Project Structure](#project-structure)
 - [Coding Conventions](#coding-conventions)
 - [Creating a Complete Viewset](#creating-a-complete-viewset)
+- [Choice API](#choice-api)
 - [Auditable Models and Serializers](#auditable-models-and-serializers)
 - [System actor](#system-actor)
 
@@ -156,7 +158,7 @@ docker-compose.yml      Local services: app, worker, Postgres, Redis, MinIO
 
 `core.views.__init__` automatically imports URL modules and collects their `url_patterns`, so adding a new file under `core/views/` registers endpoints without editing a central list.
 
-Registered URL modules today: `auth`, `health`, `user`, `group`, `permission`.
+Registered URL modules today: `auth`, `health`, `meta`, `user`, `group`, `permission`.
 
 ## Coding Conventions
 
@@ -171,6 +173,7 @@ Registered URL modules today: `auth`, `health`, `user`, `group`, `permission`.
 - Import through `core` package modules that re-export shared symbols instead of pulling the same names from upstream libraries. Inside `core`, use relative package imports and access symbols on those namespaces — for example `from .. import models`, `serializers`, `validators`, `permissions`, `pagination`, and `mixins`, then `permissions.DjangoModelPermissions`, `validators.MinValueValidator`, `serializers.ModelSerializer`. The package `__init__.py` files own the re-exports from Django, DRF, and project code; resource modules (viewsets, serializers, and so on) should not import re-exported symbols directly from `rest_framework.*` or `django.core.validators` when they are available on a `core` package.
 - Group imports in this order: standard library, third-party packages (only symbols not re-exported by `core`, such as `rest_framework.status` or `django.db.transaction`), then local `core` package imports.
 - Keep simple writes in serializers (`create` / `update`, `validate_*`). Use `core/usecases` and `core/services` only when a flow needs multi-entity transactions, reuse from tasks or commands, or business logic that outgrows a single serializer. GET/list/retrieve stay in viewsets and querysets.
+- Expose static enum options through `MetaViewSet` (see [Choice API](#choice-api)). Use `ChoiceSerializer` subclasses on resource viewsets for database-backed option lists.
 
 ## Use Cases and Services
 
@@ -244,6 +247,65 @@ class ExampleViewSet(
     def perform_update(self, serializer):
         serializer.save(performed_by=self.request.user)
 ```
+
+## Choice API
+
+Expose static Django `Choices` enums to the frontend for select, radio, and dropdown metadata.
+
+### When to use
+
+- Model fields backed by `models.TextChoices`, `models.IntegerChoices`, or another `models.Choices` subclass
+- Fixed, server-defined option lists that need translated labels
+
+For dynamic option lists backed by database rows (for example users for a `<select>`), subclass `ChoiceSerializer` on the resource viewset instead — see `UserChoicesSerializer` with `GET /api/users/?for=options`.
+
+### Registering a new choice enum
+
+1. Define the enum under `core/models/<domain>/enums.py` (or alongside the model).
+2. Re-export it from `core/models/__init__.py` when other modules should import it as `models.<Name>`.
+3. Add the class to `_build_choice_registry(...)` in `core/viewsets/meta.py`.
+
+The URL slug is derived from the class name:
+
+```python
+slugify(camel_case_to_spaces(UploadStatus.__name__))  # → "upload-status"
+```
+
+Endpoint: `GET /api/meta/choices/upload-status/`
+
+Keep registration explicit — do not auto-discover every `Choices` class in the project. `_build_choice_registry` raises if two classes resolve to the same slug.
+
+### Response shape
+
+`MetaViewSet` returns a read-only limit-offset envelope so front ends can reuse the same list-response helpers as resource endpoints. Choice lists are not paginated (`next` and `previous` are always `null`); `count` is the number of enum members.
+
+Each item is serialized through `ChoiceSerializer`:
+
+| Field | Source |
+|-------|--------|
+| `value` | choice member value |
+| `label` | translated member label (`gettext`) |
+| `color` | optional; read from a `color` attribute on the member when present |
+
+Pass enum members through the serializer stack — do not build `{value, label}` dicts manually in the viewset. `ChoiceSerializer` resolves labels and optional colors from the member object.
+
+Example response (camelCase at runtime):
+
+```json
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    { "value": "pending", "label": "Pending", "color": null },
+    { "value": "ready", "label": "Ready", "color": null }
+  ]
+}
+```
+
+### Optional colors
+
+If a choice needs a UI color token, expose it on the enum member (for example a `@property` or extra attribute) so `ChoiceSerializer.get_color()` can read it.
 
 ## Auditable Models and Serializers
 

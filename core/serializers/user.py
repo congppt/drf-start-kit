@@ -6,7 +6,12 @@ from rest_framework import serializers
 from integrations.minio import minio
 
 from .. import models, validators
-from .common import ExcludeDeleteModelSerializer, FileAttachSerializer, FilePresignedUploadUrlSerializer
+from .common import (
+    ChoiceSerializer,
+    ExcludeDeleteModelSerializer,
+    FileAttachSerializer,
+    FilePresignedUploadUrlSerializer,
+)
 from .group import GroupSerializer
 
 AVATAR_FIELD_NAME = models.User.AVATAR_FIELD_NAME
@@ -14,8 +19,8 @@ AVATAR_IS_PUBLIC = models.User.AVATAR_IS_PUBLIC
 
 
 class UserPreferencesSerializer(serializers.Serializer):
-    theme = serializers.CharField()
-    lang = serializers.CharField()
+    theme = serializers.CharField(required=False)
+    lang = serializers.CharField(required=False)
 
 
 class UserSerializer(ExcludeDeleteModelSerializer):
@@ -39,6 +44,10 @@ class UserSerializer(ExcludeDeleteModelSerializer):
         if file_asset.is_public:
             return minio.get_public_url(file_asset.id)
         return minio.presigned_download(file_asset.id, file_asset.name)
+
+
+class UserChoicesSerializer(ChoiceSerializer):
+    value = serializers.PrimaryKeyRelatedField(queryset=models.User.objects.all(), source="pk")
 
 
 class UserCreateSerializer(UserSerializer):
