@@ -52,7 +52,7 @@ class FilePresignedUploadUrlSerializer(serializers.Serializer):
         }
 
 
-class FileAttachSerializer(serializers.Serializer):
+class FileAttachmentSerializer(serializers.Serializer):
     """
     Attach a previously uploaded ``FileAsset`` to a model instance.
 

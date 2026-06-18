@@ -9,7 +9,7 @@ from .. import models, validators
 from .common import (
     ChoiceSerializer,
     ExcludeDeleteModelSerializer,
-    FileAttachSerializer,
+    FileAttachmentSerializer,
     FilePresignedUploadUrlSerializer,
 )
 from .group import GroupSerializer
@@ -121,7 +121,7 @@ class UserAvatarUploadUrlSerializer(FilePresignedUploadUrlSerializer):
     is_public = AVATAR_IS_PUBLIC
 
 
-class UserAvatarSelfUpdateSerializer(FileAttachSerializer):
+class UserAvatarSelfUpdateSerializer(FileAttachmentSerializer):
     is_public = AVATAR_IS_PUBLIC
     field_name = AVATAR_FIELD_NAME
 
