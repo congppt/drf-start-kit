@@ -133,24 +133,22 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        # "ENGINE": "django.db.backends.sqlite3",
+        # "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env.DB_NAME,
+        "USER": env.DB_USER,
+        "PASSWORD": env.DB_PASSWORD,
+        "HOST": env.DB_HOST,
+        "PORT": env.DB_PORT,
+        "CONN_HEALTH_CHECKS": True,
+        "OPTIONS": {
+            "pool": {
+                "min_size": 2,
+                "max_size": 10,
+            }
+        },
     }
-    # "default": {
-    #     "ENGINE": "django.db.backends.postgresql",
-    #     "NAME": env.DB_NAME,
-    #     "USER": env.DB_USER,
-    #     "PASSWORD": env.DB_PASSWORD,
-    #     "HOST": env.DB_HOST,
-    #     "PORT": env.DB_PORT,
-    #     "CONN_HEALTH_CHECKS": True,
-    #     "OPTIONS": {
-    #         "pool": {
-    #             "min_size": 2,
-    #             "max_size": 10,
-    #         }
-    #     },
-    # }
 }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -175,17 +173,17 @@ HUEY = {
     "immediate": False,  # If true, run synchronously. Periodic task cannot run in sync mode
     "utc": True,  # Use UTC for all times internally.
     "blocking": True,  # Perform blocking pop rather than poll Redis.
-    "database": "sqlite:///db.sqlite3",
-    # "database": PooledPostgresqlDatabase(
-    #     env.DB_NAME,
-    #     user=env.DB_USER,
-    #     password=env.DB_PASSWORD,
-    #     host=env.DB_HOST,
-    #     port=env.DB_PORT,
-    #     max_connections=30,
-    #     stale_timeout=300,
-    #     timeout=30,
-    # ),
+    # "database": "sqlite:///db.sqlite3",
+    "database": PooledPostgresqlDatabase(
+        env.DB_NAME,
+        user=env.DB_USER,
+        password=env.DB_PASSWORD,
+        host=env.DB_HOST,
+        port=env.DB_PORT,
+        max_connections=30,
+        stale_timeout=300,
+        timeout=30,
+    ),
     "consumer": {
         "workers": env.HUEY_WORKERS,
         "worker_type": "thread",

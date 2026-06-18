@@ -47,7 +47,7 @@ Documentation is ordered for extending the starter kit: run and configure first,
 
 ## Quick Start
 
-**Prerequisites:** Python 3.14+, Docker (optional), Postgres, Redis, and MinIO for full local parity with production. The development script can install GNU gettext for local translation compilation when a supported package manager is available.
+**Prerequisites:** Python 3.13+, Docker (optional), Postgres, Redis, and MinIO for full local parity with production. The development script can install GNU gettext for local translation compilation when a supported package manager is available.
 
 ### Docker (recommended)
 
@@ -73,13 +73,23 @@ Run the background worker in a second terminal:
 python manage.py run_huey
 ```
 
+Install or update dependencies manually:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate    # Windows Git Bash: source .venv/Scripts/activate
+python -m pip install -r requirements.txt
+```
+
+Pin direct dependencies in `requirements.txt` with `==`. Add or bump a package there, then reinstall locally and rebuild Docker images.
+
+`bash dev.sh` and `bash dev.sh local` are safe to rerun. The script checks for existing setup such as `.env`, `.venv`, and GNU gettext before creating or installing anything. The generated `.env` uses development defaults; review it before using it outside local development.
+
 Load bundled fixtures when you add seed data under `core/fixtures/`:
 
 ```bash
 python manage.py loaddata core/fixtures/group.json core/fixtures/user.json
 ```
-
-`bash dev.sh` and `bash dev.sh local` are safe to rerun. The script checks for existing setup such as `.env`, `.venv`, and GNU gettext before creating or installing anything. The generated `.env` uses development defaults; review it before using it outside local development.
 
 ## Configuration
 
@@ -153,6 +163,8 @@ i18n/                   Third-party translation override msgids
 locale/                 Django translation catalogs
 utils/                  Shared helpers such as cache and logging
 manage.py               Django management entry point
+requirements.txt        Direct dependencies with version pins
+pyproject.toml          Ruff and project tool configuration
 docker-compose.yml      Local services: app, worker, Postgres, Redis, MinIO
 ```
 

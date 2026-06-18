@@ -145,14 +145,12 @@ activate_venv() {
   fi
 }
 
-setup_local() {
-  if ! command_exists python; then
-    echo "Python is required for local setup." >&2
-    exit 1
-  fi
+run_python() {
+  activate_venv
+  python "$@"
+}
 
-  ensure_env_file
-
+install_dependencies() {
   if [[ ! -d .venv ]]; then
     echo "Creating Python virtual environment"
     python -m venv .venv
@@ -162,19 +160,29 @@ setup_local() {
 
   activate_venv
 
-  echo "Installing Python dependencies"
+  echo "Installing Python dependencies with pip"
   python -m pip install --upgrade pip
   python -m pip install -r requirements.txt
+}
+
+setup_local() {
+  if ! command_exists python; then
+    echo "Python is required for local setup." >&2
+    exit 1
+  fi
+
+  ensure_env_file
+  install_dependencies
 
   if ensure_gettext; then
     echo "Compiling translation catalogs"
-    python manage.py compilemessages
+    run_python manage.py compilemessages
   else
     echo "Skipping compilemessages because GNU gettext is not ready." >&2
   fi
 
   echo "Running migrations"
-  python manage.py migrate
+  run_python manage.py migrate
 
   cat <<'EOF'
 
@@ -185,6 +193,10 @@ Start the API:
 
 Start the worker in another terminal:
   python manage.py run_huey
+
+Activate the virtual environment first:
+  source .venv/bin/activate    # Linux/macOS
+  source .venv/Scripts/activate    # Windows Git Bash
 EOF
 }
 
