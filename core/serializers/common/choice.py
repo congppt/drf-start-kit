@@ -3,18 +3,18 @@ from rest_framework import serializers
 
 
 class ChoiceSerializer(serializers.Serializer):
-    value = serializers.CharField()
+    value = serializers.SerializerMethodField()
     label = serializers.SerializerMethodField()
-    color = serializers.SerializerMethodField(required=False)
+    color = serializers.CharField(default=None)
 
-    def get_label(self, obj):
+    def get_value(self, obj) -> int | str:
+        return obj.value
+
+    def get_label(self, obj) -> str:
         label = getattr(obj, "label", None)
         if label is not None:
-            return _(label)
+            return label
         return str(obj)
-
-    def get_color(self, obj):
-        return getattr(obj, "color", None)
 
 
 class ChoiceLimitOffsetSerializer(serializers.Serializer):

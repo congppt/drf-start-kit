@@ -180,7 +180,7 @@ HUEY = {
         host=env.DB_HOST,
         port=env.DB_PORT,
         **env.DB_OPTIONS,
-        max_connections=env.HUEY_WORKERS + 5, # Safety overhead
+        max_connections=env.HUEY_WORKERS + 5,  # Safety overhead
         stale_timeout=300,
         timeout=30,
     ),

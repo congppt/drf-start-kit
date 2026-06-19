@@ -61,3 +61,5 @@ if HUEY_WORKERS < 1:
 # Per Gunicorn process (sync worker ≈ one concurrent request). Safety overhead
 DB_POOL_MIN_SIZE = 1
 DB_POOL_MAX_SIZE = 4
+
+LOG_RETENTION = int(os.getenv("LOG_RETENTION", "60"))

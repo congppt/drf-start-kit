@@ -12,3 +12,4 @@ Layout:
 Services should not import serializers or viewsets. Use cases open transactions;
 services perform focused steps inside them.
 """
+from . import log
