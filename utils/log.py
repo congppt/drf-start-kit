@@ -1,5 +1,6 @@
 import os
 import sys
+import uuid
 from datetime import timedelta
 from enum import IntEnum
 
@@ -33,6 +34,9 @@ sys.tracebacklimit = 1
 os.makedirs(LOG_DIR, exist_ok=True)
 # Remove default handler
 __logger.remove(0)
+
+logger = __logger.patch(lambda record: record["extra"].setdefault("id", str(uuid.uuid4())))
+
 # Default log options
 LOG_OPTS = dict(
     rotation=timedelta(days=1),
@@ -44,25 +48,23 @@ LOG_OPTS = dict(
 )
 
 # Standard logger
-__logger.add(
+logger.add(
     os.path.join(LOG_DIR, "{time:YY-MM-DD}.json"),
-    level=LogLevel.INFO,
+    level=LogLevel.TRACE,
     **LOG_OPTS,
 )
 
 # Error logger
-__logger.add(
+logger.add(
     os.path.join(LOG_DIR, "{time:YY-MM-DD}.error.json"),
     level=LogLevel.ERROR,
     **LOG_OPTS,
 )
 
 #  Console logger
-__logger.add(
+logger.add(
     sys.stderr,
     format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level> | <cyan>{module}.{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level> {extra}",
     level=LogLevel.TRACE if not env.IS_PRODUCTION else LogLevel.INFO,
     enqueue=True,
 )
-
-logger = __logger

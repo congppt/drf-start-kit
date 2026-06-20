@@ -6,6 +6,7 @@ from huey.signals import SIGNAL_CANCELED, SIGNAL_ERROR, SIGNAL_LOCKED, SIGNAL_RE
 from utils.log import LOG_DIR, LOG_OPTS, LogLevel, logger
 
 from .gc import *
+from .log import *
 
 logger.add(
     os.path.join(LOG_DIR, "{time:YY-MM-DD}.background.json"),

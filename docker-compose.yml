@@ -32,7 +32,7 @@ x-app-common: &app-common
 services:
   migrate:
     <<: *app-build
-    command: ["python", "manage.py", "migrate", "--noinput"]
+    command: ["sh", "-c", "python manage.py migrate --noinput && python manage.py migrate --database=logs --noinput"]
     depends_on:
       db:
         condition: service_healthy

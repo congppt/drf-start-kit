@@ -5,9 +5,9 @@ from .common import (
     ChoiceLimitOffsetSerializer,
     ExcludeAuditableModelSerializer,
     ExcludeDeleteModelSerializer,
+    LogEntrySerializer,
 )
 from .group import GroupSerializer
-from .log import LogSerializer
 from .permission import PermissionSerializer
 from .user import (
     PasswordChangeSerializer,

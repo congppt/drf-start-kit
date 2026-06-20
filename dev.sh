@@ -183,6 +183,7 @@ setup_local() {
 
   echo "Running migrations"
   run_python manage.py migrate
+  run_python manage.py migrate --database=logs
 
   cat <<'EOF'
 

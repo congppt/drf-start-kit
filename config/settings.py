@@ -17,6 +17,8 @@ from django.utils.timezone import timedelta
 from django.utils.translation import gettext_lazy as _
 from playhouse.pool import PooledPostgresqlDatabase
 
+from utils.log import LOG_DIR
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -129,6 +131,8 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+LOG_DB = "logs"
+
 DATABASES = {
     "default": {
         # "ENGINE": "django.db.backends.sqlite3",
@@ -147,8 +151,14 @@ DATABASES = {
             },
             **env.DB_OPTIONS,
         },
-    }
+    },
+    LOG_DB: {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / LOG_DIR / f"{LOG_DB}.sqlite3",
+    },
 }
+
+DATABASE_ROUTERS = ["core.db_router.LogDBRouter"]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

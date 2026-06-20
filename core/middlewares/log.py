@@ -51,7 +51,7 @@ class LoggingMiddleware:
 
     def __extract_request_info(self, request):
         extra = {
-            "request_id": getattr(request, "request_id", None),
+            "id": request.headers.get("x-request-id") or str(uuid.uuid4()),
             "ip_address": self.__get_client_ip(request),
             "path": request.path,
             "query_params": request.GET.dict(),
@@ -95,15 +95,14 @@ class LoggingMiddleware:
         return extra
 
     async def __call__(self, request):
-        request.request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
         start = time.perf_counter()
+        extra = self.__extract_request_info(request)
         response = await self.get_response(request)
         process_duration = time.perf_counter() - start
-        extra = self.__extract_request_info(request)
         extra["duration"] = process_duration
         extra["status_code"] = response.status_code
         extra["username"] = request.user.username if request.user.is_authenticated else None
-        response.headers["X-Request-ID"] = request.request_id
+        response.headers["X-Request-ID"] = extra["id"]
         logger.info("", **extra)
         return response
 

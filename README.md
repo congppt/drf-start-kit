@@ -943,12 +943,58 @@ python manage.py run_huey
 
 ### Migrations
 
+The project uses two database aliases configured in `config/settings.py`:
+
+| Alias | Setting | Engine | Stores |
+|-------|---------|--------|--------|
+| `default` | `DATABASES["default"]` | PostgreSQL | Users, files, auth, Huey, etc. |
+| `logs` | `LOG_DB` | SQLite (`logs/logs.sqlite3`) | `LogEntry` only |
+
+`LogEntry` is routed to the logs database by `LogDBRouter` in `core/db_router.py` (reads, writes, and migrations). Use `LogEntry.objects` as usual — no custom manager required.
+
+#### Create and apply migrations
+
+`makemigrations` generates migration files once for the whole project. Apply them **to each database separately**:
+
 ```bash
 python manage.py makemigrations
+
+# PostgreSQL (default) — all apps except LogEntry tables
 python manage.py migrate
+
+# SQLite logs DB — router creates LogEntry only, skips all other tables
+python manage.py migrate --database=logs
 ```
 
-Docker Compose runs `migrate --noinput` automatically before the app and worker start.
+`dev.sh` and the Docker Compose `migrate` service run both commands automatically.
+
+Check applied migrations per database:
+
+```bash
+python manage.py showmigrations
+python manage.py showmigrations --database=logs
+```
+
+#### How migration routing works
+
+`LogDBRouter` routes `LogEntry` queries to `LOG_DB` and uses `allow_migrate` so each database only gets the tables it needs:
+
+| Database | Tables created |
+|----------|----------------|
+| `default` | All models **except** `LogEntry` |
+| `logs` (`LOG_DB`) | **`LogEntry` only** |
+
+You do not need an app label on the logs migrate command. This project is a single Django app (`core`); `migrate --database=logs` runs installed-app migrations, but the router skips every operation except `LogEntry`. Third-party apps (auth, JWT blacklist, …) will appear in the logs DB `django_migrations` table with no tables created — that is expected.
+
+#### Tips
+
+- Run `migrate --database=logs` after pulling migrations that touch `LogEntry`, same as you would for `default`.
+- The SQLite file lives under `logs/` (mounted in Docker). It is gitignored; create it locally with the logs migrate command.
+- To mark a logs migration as applied without executing SQL (e.g. after manual schema setup):  
+  `python manage.py migrate --database=logs 0002 --fake`
+- Avoid cross-database foreign keys — `LogEntry` is standalone on SQLite by design.
+
+Docker Compose runs `migrate --noinput` on both databases automatically before the app and worker start.
 
 ### Fixtures
 

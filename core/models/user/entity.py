@@ -40,6 +40,7 @@ class User(common.AuditableModel, AbstractUser):
 
     class Meta(AbstractUser.Meta):
         swappable = "AUTH_USER_MODEL"
+        db_table = "user"
 
     AVATAR_FIELD_NAME = "avatar"
     AVATAR_IS_PUBLIC = True

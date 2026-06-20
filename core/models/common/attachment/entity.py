@@ -17,6 +17,9 @@ class FileAsset(models.Model):
     status = models.CharField(max_length=10, choices=UploadStatus.choices, default=UploadStatus.PENDING, db_index=True)
     created = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        db_table = "file_asset"
+
 
 class FileAttachment(models.Model):
     file = models.ForeignKey(FileAsset, on_delete=models.CASCADE, related_name="attachments")
@@ -24,3 +27,6 @@ class FileAttachment(models.Model):
     object_id = models.CharField(max_length=64)
     content_object = GenericForeignKey("content_type", "object_id")
     field_name = models.CharField(max_length=50)
+
+    class Meta:
+        db_table = "file_attachment"
