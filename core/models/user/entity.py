@@ -42,5 +42,11 @@ class User(common.AuditableModel, AbstractUser):
         swappable = "AUTH_USER_MODEL"
         db_table = "user"
 
+    def __str__(self) -> str:
+        full_name = self.get_full_name()
+        if full_name:
+            return f"{full_name} ({self.username})"
+        return self.username
+
     AVATAR_FIELD_NAME = "avatar"
     AVATAR_IS_PUBLIC = True
