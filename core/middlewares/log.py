@@ -2,10 +2,13 @@ import json
 import os
 import time
 import uuid
+import contextlib
 from typing import Any
 from urllib.parse import parse_qs
 
 from asgiref.sync import iscoroutinefunction, markcoroutinefunction
+from django.conf import settings
+from rest_framework_simplejwt.tokens import AccessToken
 
 from utils.log import LOG_DIR, LOG_OPTS, LogLevel, logger
 
@@ -101,7 +104,12 @@ class LoggingMiddleware:
         process_duration = time.perf_counter() - start
         extra["duration"] = process_duration
         extra["status_code"] = response.status_code
-        extra["username"] = request.user.username if request.user.is_authenticated else None
+        extra["user_id"] = None
+        if auth_header:= request.headers.get("authorization"):
+            __, raw_token = auth_header.split(" ")
+            with contextlib.suppress(Exception):
+                token = AccessToken(raw_token)
+                extra["username"] = token[settings.SIMPLE_JWT["USERNAME_CLAIM"]]
         response.headers["X-Request-ID"] = extra["id"]
         logger.info("", **extra)
         return response

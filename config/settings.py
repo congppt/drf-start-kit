@@ -216,6 +216,7 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "TOKEN_TYPE_CLAIM": "tokenType",
     "USER_ID_CLAIM": "userId",
+    "USERNAME_CLAIM": "username",
 }
 
 AUTH_USER_MODEL = "core.User"
