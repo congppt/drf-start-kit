@@ -1,8 +1,8 @@
+import contextlib
 import json
 import os
 import time
 import uuid
-import contextlib
 from typing import Any
 from urllib.parse import parse_qs
 
@@ -19,20 +19,10 @@ def _is_api_log(record):
     return record["name"] == API_LOG_NAME
 
 
-def _is_unsafe_api_log(record):
-    return _is_api_log(record) and record.get("extra", {}).get("method") in ["POST", "PUT", "PATCH", "DELETE"]
-
-
 logger.add(
     os.path.join(LOG_DIR, "{time:YY-MM-DD}.api.json"),
     level=LogLevel.INFO,
     filter=_is_api_log,
-    **LOG_OPTS,
-)
-logger.add(
-    os.path.join(LOG_DIR, "{time:YY-MM-DD}.api.unsafe.json"),
-    level=LogLevel.INFO,
-    filter=_is_unsafe_api_log,
     **LOG_OPTS,
 )
 

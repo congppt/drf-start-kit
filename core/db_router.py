@@ -25,4 +25,6 @@ class LogDBRouter:
     def allow_migrate(self, db, app_label, model_name=None, **hints):
         if app_label == models.LogEntry._meta.app_label and model_name == models.LogEntry._meta.model_name:
             return db == settings.LOG_DB
-        return False
+        if db == settings.LOG_DB:
+            return False
+        return None

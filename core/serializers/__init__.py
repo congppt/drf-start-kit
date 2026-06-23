@@ -7,7 +7,7 @@ from .common import (
     ExcludeDeleteModelSerializer,
     LogEntrySerializer,
 )
-from .group import GroupSerializer, GroupChoicesSerializer
+from .group import GroupChoicesSerializer, GroupSerializer
 from .permission import PermissionSerializer
 from .user import (
     PasswordChangeSerializer,
