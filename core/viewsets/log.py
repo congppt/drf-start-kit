@@ -1,7 +1,7 @@
 import django_filters
 from rest_framework import permissions, viewsets
 
-from .. import filters, models, serializers
+from .. import models, serializers
 
 
 class LogFilter(django_filters.FilterSet):
