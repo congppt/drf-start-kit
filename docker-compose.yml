@@ -1,3 +1,5 @@
+name: backend-app
+
 x-app-build: &app-build
   build:
     context: .
@@ -32,6 +34,7 @@ x-app-common: &app-common
 services:
   migrate:
     <<: *app-build
+    container_name: backend-app-migrate
     command: ["sh", "-c", "python manage.py migrate --noinput && python manage.py migrate --database=logs --noinput"]
     depends_on:
       db:
@@ -40,6 +43,7 @@ services:
 
   server:
     <<: *app-common
+    container_name: backend-app-server
     command:
       - gunicorn
       - config.wsgi:application
@@ -51,6 +55,7 @@ services:
       - "300"
       - --graceful-timeout
       - "300"
+      - --no-control-socket
     ports:
       - 8000:8000
     healthcheck:
@@ -61,10 +66,12 @@ services:
 
   worker:
     <<: *app-common
+    container_name: backend-app-worker
     command: ["python", "manage.py", "run_huey"]
 
   db:
     image: postgres:16-alpine
+    container_name: backend-app-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
@@ -82,6 +89,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    container_name: backend-app-redis
     restart: unless-stopped
     command: redis-server --save 60 1 --loglevel warning
     volumes:
@@ -96,6 +104,7 @@ services:
 
   minio:
     image: minio/minio:latest
+    container_name: backend-app-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -107,13 +116,14 @@ services:
       - 9000:9000
       - 9001:9001
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "mc", "ready", "local"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   minio-init:
     image: minio/mc:latest
+    container_name: backend-app-minio-init
     depends_on:
       minio:
         condition: service_healthy

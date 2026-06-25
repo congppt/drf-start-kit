@@ -55,6 +55,6 @@ def health_check(_request):
     )
 
 
-url_patterns = [
+urlpatterns = [
     path("health/", health_check, name="health_check"),
 ]

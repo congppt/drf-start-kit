@@ -18,6 +18,7 @@ class UserFilter(django_filters.FilterSet):
 class UserViewSet(
     mixins.CreateAuditableModelMixin,
     mixins.UpdateAuditableModelMixin,
+    mixins.ChoiceListModelMixin,
     viewsets.ReadOnlyModelViewSet,
 ):
     queryset = models.User.objects.prefetch_related("attachments__file", "groups").all()
@@ -54,9 +55,7 @@ class UserViewSet(
             case "user_permissions" | "permissions_self":
                 return serializers.PermissionSerializer
             case _:
-                if self.request.query_params.get("for") == "options":
-                    return serializers.UserChoicesSerializer
-                return serializers.UserSerializer
+                return super().get_serializer_class()
 
     @action(
         detail=False,

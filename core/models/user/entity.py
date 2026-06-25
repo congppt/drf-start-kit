@@ -40,7 +40,6 @@ class User(common.AuditableModel, AbstractUser):
 
     class Meta(AbstractUser.Meta):
         swappable = "AUTH_USER_MODEL"
-        db_table = "user"
 
     def __str__(self) -> str:
         full_name = self.get_full_name()

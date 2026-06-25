@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 ARG PYTHON_VERSION=3.13.2
-FROM python:${PYTHON_VERSION}-slim as base
+FROM python:${PYTHON_VERSION}-slim AS base
 
 # Prevents Python from writing pyc files.
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -32,20 +32,21 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=bind,source=requirements.txt,target=requirements.txt \
     python -m pip install -r requirements.txt
 
-# Install curl for health checks and gettext for Django message compilation.
+# Install curl for health checks, gettext for Django message compilation, and gosu to drop privileges.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl gettext \
+    && apt-get install -y --no-install-recommends curl gettext gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the source code into the container.
 COPY . .
 
-RUN django-admin compilemessages
-
-# Switch to the non-privileged user to run the application.
-USER appuser
+RUN sed -i 's/\r$//' /dist/entrypoint.sh \
+    && chmod +x /dist/entrypoint.sh \
+    && django-admin compilemessages \
+    && chown -R appuser:appuser /dist
 
 # Expose the port that the application listens on.
 EXPOSE 8000
 
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "300", "--graceful-timeout", "300"]
+ENTRYPOINT ["/dist/entrypoint.sh"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "300", "--graceful-timeout", "300", "--no-control-socket"]

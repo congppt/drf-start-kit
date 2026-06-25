@@ -1,4 +1,7 @@
-from django.utils.translation import gettext_lazy as _
+from enum import Enum
+from uuid import UUID
+
+from django.db.models import QuerySet
 from rest_framework import serializers
 
 
@@ -7,8 +10,10 @@ class ChoiceSerializer(serializers.Serializer):
     label = serializers.SerializerMethodField()
     color = serializers.CharField(default=None)
 
-    def get_value(self, obj) -> int | str:
-        return obj.value
+    def get_value(self, obj) -> int | str | UUID:
+        if isinstance(obj, Enum):
+            return obj.value
+        return obj.pk
 
     def get_label(self, obj) -> str:
         label = getattr(obj, "label", None)

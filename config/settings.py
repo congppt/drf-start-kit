@@ -40,6 +40,7 @@ CORS_ALLOW_ALL_ORIGINS = not env.IS_PRODUCTION or not env.ALLOWED_ORIGINS
 # Application definition
 INSTALLED_APPS = [
     # 'django.contrib.admin',
+    "core",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     # 'django.contrib.sessions',
@@ -50,10 +51,8 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "django_filters",
-    "core",
     "huey.contrib.djhuey",
     "drf_spectacular",
-    "drf_spectacular_sidecar",
 ]
 
 REST_FRAMEWORK = {
@@ -83,9 +82,6 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Starter API built with Django REST Framework.",
     "VERSION": "1.0.0",
     "COMPONENT_SPLIT_REQUEST": True,
-    "SWAGGER_UI_DIST": "SIDECAR",
-    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
-    "REDOC_DIST": "SIDECAR",
 }
 
 JSON_CAMEL_CASE = {"RENDERER_CLASS": "drf_orjson_renderer.renderers.ORJSONRenderer"}

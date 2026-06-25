@@ -6,4 +6,9 @@ from rest_framework.mixins import (
     UpdateModelMixin,
 )
 
-from .common import CreateAuditableModelMixin, DestroyAuditableModelMixin, UpdateAuditableModelMixin
+from .common import (
+    ChoiceListModelMixin,
+    CreateAuditableModelMixin,
+    DestroyAuditableModelMixin,
+    UpdateAuditableModelMixin,
+)

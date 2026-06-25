@@ -16,7 +16,7 @@ class ThrottleTokenRefreshView(TokenRefreshView):
     throttle_classes = [factory.anon_rate_throttle("5/minute")]
 
 
-url_patterns = [
+urlpatterns = [
     path("token/", ThrottleTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("token/refresh/", ThrottleTokenRefreshView.as_view(), name="token_refresh"),
     path("token/logout/", TokenBlacklistView.as_view(), name="token_logout"),

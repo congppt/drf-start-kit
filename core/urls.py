@@ -5,7 +5,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from . import views
 
-urlpatterns = views.url_patterns
+urlpatterns = views.urlpatterns
 
 if not env.IS_PRODUCTION:
     urlpatterns.extend(

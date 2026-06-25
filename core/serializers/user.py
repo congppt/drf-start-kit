@@ -12,7 +12,6 @@ from .common import (
     FileAttachmentSerializer,
     FilePresignedUploadUrlSerializer,
 )
-from .group import GroupSerializer
 
 AVATAR_FIELD_NAME = models.User.AVATAR_FIELD_NAME
 AVATAR_IS_PUBLIC = models.User.AVATAR_IS_PUBLIC
@@ -25,7 +24,7 @@ class UserPreferencesSerializer(serializers.Serializer):
 
 class UserSerializer(ExcludeDeleteModelSerializer):
     avatar_url = serializers.SerializerMethodField()
-    groups = GroupSerializer(many=True, read_only=True)
+    groups = ChoiceSerializer(many=True, read_only=True)
     preferences = UserPreferencesSerializer(required=False)
 
     class Meta:

@@ -1,1 +1,2 @@
 from .audit import CreateAuditableModelMixin, DestroyAuditableModelMixin, UpdateAuditableModelMixin
+from .choice import ChoiceListModelMixin

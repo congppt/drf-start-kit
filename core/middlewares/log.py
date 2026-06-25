@@ -87,6 +87,17 @@ class LoggingMiddleware:
             extra["body"] = filter_sensitive_data(parsed_body)
         return extra
 
+    def __resolve_username(self, request):
+        username = None
+        with contextlib.suppress(Exception):
+            username = request.user.username
+        if not username and (auth_header := request.headers.get("authorization")):
+            __, raw_token = auth_header.split(" ")
+            with contextlib.suppress(Exception):
+                token = AccessToken(raw_token)
+                username = token[settings.SIMPLE_JWT["USERNAME_CLAIM"]]
+        return username
+
     async def __call__(self, request):
         start = time.perf_counter()
         extra = self.__extract_request_info(request)
@@ -94,12 +105,7 @@ class LoggingMiddleware:
         process_duration = time.perf_counter() - start
         extra["duration"] = process_duration
         extra["status_code"] = response.status_code
-        extra["user_id"] = None
-        if auth_header:= request.headers.get("authorization"):
-            __, raw_token = auth_header.split(" ")
-            with contextlib.suppress(Exception):
-                token = AccessToken(raw_token)
-                extra["username"] = token[settings.SIMPLE_JWT["USERNAME_CLAIM"]]
+        extra["username"] = self.__resolve_username(request)
         response.headers["X-Request-ID"] = extra["id"]
         logger.info("", **extra)
         return response
