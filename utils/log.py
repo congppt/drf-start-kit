@@ -63,7 +63,7 @@ logger.add(
 
 #  Console logger
 logger.add(
-    sys.stderr,
+    sys.stdout,
     format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level> | <cyan>{module}.{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level> {extra}",
     level=LogLevel.TRACE if not env.IS_PRODUCTION else LogLevel.INFO,
     enqueue=True,

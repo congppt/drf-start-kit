@@ -26,8 +26,8 @@ class MinioClient:
             http_client = urllib3.PoolManager(
                 timeout=urllib3.Timeout(connect=connect_timeout, read=read_timeout),
                 maxsize=10,
-                # cert_reqs='CERT_REQUIRED',
-                # ca_certs=self.__get_config('SSL_CERT_FILE') or certifi.where(),
+                cert_reqs='CERT_REQUIRED',
+                ca_certs=self.__get_config('SSL_CERT_FILE') or certifi.where(),
                 retries=urllib3.Retry(total=5, backoff_factor=0.2, status_forcelist=[500, 502, 503, 504]),
             )
             self.__client = Minio(
