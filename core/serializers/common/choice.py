@@ -1,7 +1,6 @@
 from enum import Enum
 from uuid import UUID
 
-from django.db.models import QuerySet
 from rest_framework import serializers
 
 
