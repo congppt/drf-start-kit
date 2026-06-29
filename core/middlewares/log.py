@@ -14,6 +14,21 @@ from utils.log import LOG_DIR, LOG_OPTS, LogLevel, logger
 
 API_LOG_NAME = __name__
 
+_SENSITIVE_KEYWORDS = frozenset(
+    {
+        "password",
+        "token",
+        "secret",
+        "api_key",
+        "apikey",
+        "credential",
+        "authorization",
+        "access",
+        "refresh",
+    }
+)
+
+
 
 def _is_api_log(record):
     return record["name"] == API_LOG_NAME
@@ -26,6 +41,10 @@ logger.add(
     **LOG_OPTS,
 )
 
+
+def _is_sensitive_key(key: str) -> bool:
+    normalized = str(key).lower()
+    return any(keyword in normalized for keyword in _SENSITIVE_KEYWORDS)
 
 class LoggingMiddleware:
     async_capable = True
@@ -76,7 +95,7 @@ class LoggingMiddleware:
                 if isinstance(data, dict):
                     return {
                         k: "[censored]"
-                        if "password" in str(k).lower() and isinstance(v, str | list)
+                        if _is_sensitive_key(k) and isinstance(v, str | list)
                         else filter_sensitive_data(v)
                         for k, v in data.items()
                     }
