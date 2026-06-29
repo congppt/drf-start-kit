@@ -8,7 +8,9 @@ from .common import (
     ExcludeDeleteModelSerializer,
     LogEntrySerializer,
 )
-from .group import GroupChoicesSerializer, GroupSerializer
+from .genre import GenreSerializer
+from .group import GroupSerializer
+from .novel import NovelSerializer
 from .permission import PermissionSerializer
 from .user import (
     PasswordChangeSerializer,

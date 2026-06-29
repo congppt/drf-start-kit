@@ -1,6 +1,8 @@
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
 __CACHE = {}
+
+
 def anon_rate_throttle(rate_limit: str):
     class_name = f"Max{rate_limit}AnonRateThrottle"
     if class_name in __CACHE:

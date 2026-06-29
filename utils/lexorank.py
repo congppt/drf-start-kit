@@ -1,6 +1,4 @@
-import math
-
-__ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz" # 36 characters
+__ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"  # 36 characters
 __LEXORANK_BASE = len(__ALPHABET)
 __RANK_LENGTH = 8
 
@@ -26,7 +24,7 @@ def __to_lexorank_base(num: int, min_length: int) -> str:
 
 
 def __parse(rank: str):
-    bucket, pos = rank.split('|')
+    bucket, pos = rank.split("|")
     return int(bucket), pos
 
 
@@ -37,7 +35,7 @@ def __format(bucket: int, pos: str) -> str:
 def __gen_next_pos(pos: str) -> str:
     val = __to_base10(pos)
     max_val = __to_base10("z" * len(pos))
-    
+
     if val + __DEFAULT_STEP_BASE10 >= max_val:
         return pos + __ALPHABET[__LEXORANK_BASE // 2]
     return __to_lexorank_base(val + __DEFAULT_STEP_BASE10, len(pos))
@@ -48,7 +46,7 @@ def __gen_prev_pos(pos: str) -> str:
     if val - __DEFAULT_STEP_BASE10 <= 0:
         return "0" + pos
     return __to_lexorank_base(val - __DEFAULT_STEP_BASE10, len(pos))
-    
+
 
 def get_rank(prev_rank: str | None, next_rank: str | None) -> str:
     if not prev_rank and not next_rank:
@@ -68,19 +66,19 @@ def get_rank(prev_rank: str | None, next_rank: str | None) -> str:
 
     if prev_bucket != next_bucket:
         raise ValueError("Cannot use this function for 2 different buckets!")
-    
+
     # Pad the positions to the same length
     max_len = max(len(prev_pos), len(next_pos))
-    prev_pos = prev_pos.ljust(max_len, '0')
-    next_pos = next_pos.ljust(max_len, '0')
+    prev_pos = prev_pos.ljust(max_len, "0")
+    next_pos = next_pos.ljust(max_len, "0")
 
     prev_value = __to_base10(prev_pos)
     next_value = __to_base10(next_pos)
 
     # If the difference between the values is 1, we need to increment the positions length by 1 to get a valid integer mid value
     if next_value - prev_value <= 1:
-        prev_pos += '0'
-        next_pos += '0'
+        prev_pos += "0"
+        next_pos += "0"
         max_len += 1
         prev_value = __to_base10(prev_pos)
         next_value = __to_base10(next_pos)
