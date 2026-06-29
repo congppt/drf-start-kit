@@ -29,7 +29,6 @@ _SENSITIVE_KEYWORDS = frozenset(
 )
 
 
-
 def _is_api_log(record):
     return record["name"] == API_LOG_NAME
 
@@ -45,6 +44,7 @@ logger.add(
 def _is_sensitive_key(key: str) -> bool:
     normalized = str(key).lower()
     return any(keyword in normalized for keyword in _SENSITIVE_KEYWORDS)
+
 
 class LoggingMiddleware:
     async_capable = True

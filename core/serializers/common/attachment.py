@@ -31,12 +31,12 @@ class FilePresignedUploadUrlSerializer(serializers.Serializer):
     upload_ttl_seconds = settings.FILE_ORPHANED_INTERVAL
 
     def create(self, validated_data: dict):
-        performed_by = validated_data.pop("performed_by")
+        performed_by: models.User = validated_data.pop("performed_by")
         content_type, _ = mimetypes.guess_type(validated_data["file_name"])
         if not content_type:
             # MinIO default content type
             content_type = "application/octet-stream"
-        file_asset = models.FileAsset.objects.create(
+        file_asset: models.FileAsset = models.FileAsset.objects.create(
             name=validated_data["file_name"],
             content_type=content_type,
             size=validated_data["file_size"],
@@ -72,7 +72,7 @@ class FileAttachmentSerializer(serializers.Serializer):
         if value.owner != request.user.username:
             raise serializers.ValidationError(_("Please choose a file that you uploaded."))
 
-        attachment = value.attachments.select_related("content_type").first()
+        attachment: models.FileAttachment = value.attachments.select_related("content_type").first()
         if (
             attachment
             and self.field_name
