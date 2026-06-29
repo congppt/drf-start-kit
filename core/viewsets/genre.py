@@ -1,9 +1,9 @@
 from rest_framework import viewsets
 
-from .. import models, permissions, serializers
+from .. import mixins, models, permissions, serializers
 
 
-class GenreViewSet(viewsets.ModelViewSet):
+class GenreViewSet(mixins.ChoiceListModelMixin, viewsets.ModelViewSet):
     queryset = models.Genre.objects.all()
     permission_classes = [permissions.DjangoModelPermissions]
     serializer_class = serializers.GenreSerializer
