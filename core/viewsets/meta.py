@@ -22,7 +22,7 @@ def _to_limit_offset_data(choices: type[models.Choices]) -> dict:
     return {"count": len(choices), "next": None, "previous": None, "results": list(choices)}
 
 
-CHOICE_REGISTRY = _build_choice_registry(models.UploadStatus, models.LogLevel)
+CHOICE_REGISTRY = _build_choice_registry(models.NovelStatus, models.UploadStatus, models.LogLevel)
 
 
 class MetaViewSet(viewsets.GenericViewSet):

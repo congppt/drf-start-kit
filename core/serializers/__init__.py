@@ -10,7 +10,7 @@ from .common import (
 )
 from .genre import GenreSerializer
 from .group import GroupSerializer
-from .novel import NovelCoverUpdateSerializer, NovelCoverUploadUrlSerializer, NovelSerializer
+from .novel import NovelCoverUpdateSerializer, NovelCoverUploadUrlSerializer, NovelInputSerializer, NovelSerializer
 from .permission import PermissionSerializer
 from .user import (
     PasswordChangeSerializer,

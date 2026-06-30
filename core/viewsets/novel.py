@@ -6,6 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .. import models, permissions, serializers, throttling
+from .common import AuditableModelViewSet
 
 
 class NovelFilter(django_filters.FilterSet):
@@ -16,7 +17,7 @@ class NovelFilter(django_filters.FilterSet):
         fields = ["status"]
 
 
-class NovelViewSet(viewsets.ModelViewSet):
+class NovelViewSet(AuditableModelViewSet):
     queryset = (
         models.Novel.objects.select_related("author")
         .prefetch_related("genres", "attachments__file")
@@ -34,6 +35,8 @@ class NovelViewSet(viewsets.ModelViewSet):
                 return serializers.NovelCoverUploadUrlSerializer
             case "change_cover":
                 return serializers.NovelCoverUpdateSerializer
+            case "create" | "update" | "partial_update":
+                return serializers.NovelInputSerializer
             case _:
                 return super().get_serializer_class()
 

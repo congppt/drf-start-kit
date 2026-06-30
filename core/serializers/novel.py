@@ -1,22 +1,33 @@
+import uuid
+
 from django.db import transaction
+from django.utils.text import slugify
 from rest_framework import serializers
 
 from integrations.minio import minio
 
 from .. import models, validators
-from .common import FileAttachmentSerializer, FilePresignedUploadUrlSerializer
+from .common import (
+    ChoiceSerializer,
+    ExcludeDeleteModelSerializer,
+    FileAttachmentSerializer,
+    FilePresignedUploadUrlSerializer,
+)
 
 COVER_FIELD_NAME = models.Novel.COVER_FIELD_NAME
 COVER_IS_PUBLIC = True
 
 
-class NovelSerializer(serializers.ModelSerializer):
+class NovelSerializer(ExcludeDeleteModelSerializer):
     cover_url = serializers.SerializerMethodField()
+    author = ChoiceSerializer(read_only=True)
+    genres = ChoiceSerializer(many=True, read_only=True)
+    status = ChoiceSerializer(read_only=True)
 
     class Meta:
         model = models.Novel
-        fields = "__all__"
-        read_only_fields = ["author", "slug"]
+        exclude = []
+        read_only_fields = ["slug"]
 
     def get_cover_url(self, obj: models.Novel) -> str | None:
         attachment: models.FileAttachment = (
@@ -30,6 +41,26 @@ class NovelSerializer(serializers.ModelSerializer):
         if file_asset.is_public:
             return minio.get_public_url(file_asset.id)
         return minio.presigned_download(file_asset.id, file_asset.name)
+
+
+class NovelInputSerializer(ExcludeDeleteModelSerializer):
+    slug = serializers.SlugField(read_only=True)
+
+    class Meta:
+        model = models.Novel
+        exclude = []
+        read_only_fields = ["author"]
+
+    def create(self, validated_data: dict):
+        slug = slugify(validated_data["title"])
+        if models.Novel.objects.filter(slug=slug).exists():
+            slug += "-" + uuid.uuid4().hex[:8]
+        validated_data["slug"] = slug
+        validated_data["author"] = validated_data["performed_by"]
+        try:
+            return super().create(validated_data)
+        except Exception as e:
+            raise serializers.ValidationError("Could not create. Please try again later.") from e
 
 
 class NovelCoverUploadUrlSerializer(FilePresignedUploadUrlSerializer):
