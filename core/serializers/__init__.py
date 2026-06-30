@@ -20,6 +20,7 @@ from .user import (
     UserAvatarUploadUrlSerializer,
     UserChoicesSerializer,
     UserCreateSerializer,
+    UserSelfSerializer,
     UserSelfUpdateSerializer,
     UserSerializer,
     UserUpdateSerializer,

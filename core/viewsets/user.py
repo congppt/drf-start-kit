@@ -47,14 +47,14 @@ class UserViewSet(
                 return serializers.UserSelfUpdateSerializer
             case "change_password":
                 return serializers.PasswordChangeSerializer
+            case "retrieve_self":
+                return serializers.UserSelfSerializer
             case "change_password_self":
                 return serializers.PasswordSelfChangeSerializer
             case "generate_avatar_upload_url_self":
                 return serializers.UserAvatarUploadUrlSerializer
             case "change_avatar_self":
                 return serializers.UserAvatarSelfUpdateSerializer
-            case "user_permissions" | "permissions_self":
-                return serializers.PermissionSerializer
             case _:
                 return super().get_serializer_class()
 
@@ -74,16 +74,17 @@ class UserViewSet(
     @action(
         detail=False,
         methods=["get"],
-        url_path="me/permissions",
+        url_path="me",
         permission_classes=[permissions.IsAuthenticated],
     )
-    def permissions_self(self, request):
-        queryset = (
+    def retrieve_self(self, request):
+        instance = request.user
+        instance_perms = (
             models.Permission.objects.select_related("content_type")
-            .filter(Q(user=request.user) | Q(group__user=request.user))
+            .filter(Q(user=instance) | Q(group__user=instance))
             .distinct()
         )
-        serializer = self.get_serializer(queryset, many=True)
+        serializer = self.get_serializer({"user": instance, "permissions": instance_perms})
         return Response(serializer.data)
 
     @action(

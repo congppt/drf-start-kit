@@ -10,13 +10,39 @@ from .common import ExcludeDeleteModelSerializer
 class ChapterListSerializer(ExcludeDeleteModelSerializer):
     class Meta:
         model = models.Chapter
-        exclude = ["content"]
+        exclude = ["content", "lexorank"]
 
 
 class ChapterDetailSerializer(ExcludeDeleteModelSerializer):
+    previous = serializers.SerializerMethodField()
+    next = serializers.SerializerMethodField()
+
     class Meta:
         model = models.Chapter
         exclude = ["lexorank"]
+
+    def _neighbor_qs(self, obj):
+        return models.Chapter.objects.filter(novel_id=obj.novel_id).exclude(pk=obj.pk)
+
+    def get_previous(self, obj):
+        pk = (
+            self._neighbor_qs(obj)
+            .filter(lexorank__lt=obj.lexorank)
+            .order_by("-lexorank")
+            .values_list("pk", flat=True)
+            .first()
+        )
+        return pk
+
+    def get_next(self, obj):
+        pk = (
+            self._neighbor_qs(obj)
+            .filter(lexorank__gt=obj.lexorank)
+            .order_by("lexorank")
+            .values_list("pk", flat=True)
+            .first()
+        )
+        return pk
 
 
 class ChapterInputSerializer(ExcludeDeleteModelSerializer):
