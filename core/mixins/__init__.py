@@ -5,6 +5,7 @@ from rest_framework.mixins import (
     RetrieveModelMixin,
     UpdateModelMixin,
 )
+from rest_framework_extensions.mixins import NestedViewSetMixin
 
 from .common import (
     ChoiceListModelMixin,

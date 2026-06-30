@@ -35,5 +35,8 @@ class Chapter(AuditableModel):
     is_published = models.BooleanField(default=False)
     published_at = models.DateTimeField(null=True)
 
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["novel", "lexorank"], name="uq_novel_lexorank")]
+
     def __str__(self):
         return self.title

@@ -1,3 +1,4 @@
+from .chapter import NovelChapterViewSet
 from .genre import GenreViewSet
 from .group import GroupViewSet
 from .log import LogViewSet

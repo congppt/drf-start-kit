@@ -77,7 +77,7 @@ class AuditableModelSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         performed_by = validated_data.pop("performed_by")
-        serializers.raise_errors_on_nested_writes('update', self, validated_data)
+        serializers.raise_errors_on_nested_writes("update", self, validated_data)
         info = serializers.model_meta.get_field_info(instance)
 
         m2m_fields = []

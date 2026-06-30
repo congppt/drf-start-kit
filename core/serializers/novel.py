@@ -45,9 +45,7 @@ class NovelSerializer(ExcludeDeleteModelSerializer):
 
 class NovelInputSerializer(ExcludeDeleteModelSerializer):
     slug = serializers.SlugField(read_only=True)
-    genres = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=models.Genre.objects.all(), allow_empty=False
-    )
+    genres = serializers.PrimaryKeyRelatedField(many=True, queryset=models.Genre.objects.all(), allow_empty=False)
 
     class Meta:
         model = models.Novel
