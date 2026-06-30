@@ -19,7 +19,7 @@ class Novel(AuditableModel):
     title = models.CharField(max_length=80)
     slug = models.SlugField(unique=True, max_length=100)
     blurb = models.TextField()
-    genres = models.ManyToManyField(Genre, related_name="novels", blank=True)
+    genres = models.ManyToManyField(Genre, related_name="novels")
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="novels")
     status = models.CharField(choices=NovelStatus.choices, default=NovelStatus.DRAFT, db_index=True)
     attachments = GenericRelation(FileAttachment)

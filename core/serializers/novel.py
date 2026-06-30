@@ -45,6 +45,9 @@ class NovelSerializer(ExcludeDeleteModelSerializer):
 
 class NovelInputSerializer(ExcludeDeleteModelSerializer):
     slug = serializers.SlugField(read_only=True)
+    genres = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=models.Genre.objects.all(), allow_empty=False
+    )
 
     class Meta:
         model = models.Novel
@@ -64,20 +67,20 @@ class NovelInputSerializer(ExcludeDeleteModelSerializer):
 
 
 class NovelCoverUploadUrlSerializer(FilePresignedUploadUrlSerializer):
-    file_name = serializers.CharField(validators=[validators.ImageFileNameValidator()])
+    file_name = serializers.CharField(write_only=True, validators=[validators.ImageFileNameValidator()])
 
     is_public = COVER_IS_PUBLIC
 
 
 class NovelCoverUpdateSerializer(FileAttachmentSerializer):
     is_public = COVER_IS_PUBLIC
-    field_name = COVER_FIELD_NAME
+    attachment_field_name = COVER_FIELD_NAME
 
     def update(self, instance: models.Novel, validated_data: dict):
         file: models.FileAsset = validated_data["file"]
         with transaction.atomic():
-            instance.attachments.filter(field_name=self.field_name).delete()
-            instance.attachments.create(file=file, field_name=self.field_name)
+            instance.attachments.filter(field_name=self.attachment_field_name).delete()
+            instance.attachments.create(file=file, field_name=self.attachment_field_name)
             file.status = models.UploadStatus.READY
             file.save()
         return instance
