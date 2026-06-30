@@ -77,11 +77,20 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 10,
 }
 
+REST_FRAMEWORK_EXTENSIONS = {
+    "DEFAULT_PARENT_LOOKUP_KWARG_NAME_PREFIX": "",
+}
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "DRF Start Kit API",
     "DESCRIPTION": "Starter API built with Django REST Framework.",
     "VERSION": "1.0.0",
     "COMPONENT_SPLIT_REQUEST": True,
+    "CAMELIZE_NAMES": True,
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.contrib.djangorestframework_camel_case.camelize_serializer_fields",
+        "drf_spectacular.hooks.postprocess_schema_enums",
+    ],
 }
 
 JSON_CAMEL_CASE = {"RENDERER_CLASS": "drf_orjson_renderer.renderers.ORJSONRenderer"}
