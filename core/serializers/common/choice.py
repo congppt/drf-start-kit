@@ -1,7 +1,6 @@
-from enum import Enum
 from uuid import UUID
 
-from django.db.models import QuerySet
+from django.db import models
 from rest_framework import serializers
 
 
@@ -11,9 +10,9 @@ class ChoiceSerializer(serializers.Serializer):
     color = serializers.CharField(default=None)
 
     def get_value(self, obj) -> int | str | UUID:
-        if isinstance(obj, Enum):
-            return obj.value
-        return obj.pk
+        if isinstance(obj, models.Model):
+            return obj.pk
+        return obj
 
     def get_label(self, obj) -> str:
         label = getattr(obj, "label", None)

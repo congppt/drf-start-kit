@@ -999,8 +999,8 @@ Docker Compose runs `migrate --noinput` on both databases automatically before t
 ### Fixtures
 
 ```bash
-python manage.py loaddata core/fixtures/group.json core/fixtures/user.json
-python manage.py dumpdata core --indent 2 > core-fixture.json
+python manage.py loaddata core/fixtures/data.json
+python -Xutf8 manage.py dumpdata --indent 2 -o core/fixtures/data.json
 ```
 
 Avoid dumping secrets, production credentials, tokens, or sensitive user data.

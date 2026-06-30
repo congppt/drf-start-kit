@@ -115,20 +115,20 @@ class PasswordSelfChangeSerializer(PasswordChangeSerializer):
 
 
 class UserAvatarUploadUrlSerializer(FilePresignedUploadUrlSerializer):
-    file_name = serializers.CharField(validators=[validators.ImageFileNameValidator()])
+    file_name = serializers.CharField(write_only=True, validators=[validators.ImageFileNameValidator()])
 
     is_public = AVATAR_IS_PUBLIC
 
 
 class UserAvatarSelfUpdateSerializer(FileAttachmentSerializer):
     is_public = AVATAR_IS_PUBLIC
-    field_name = AVATAR_FIELD_NAME
+    attachment_field_name = AVATAR_FIELD_NAME
 
     def update(self, instance: models.User, validated_data: dict):
         file = validated_data["file"]
         with transaction.atomic():
-            instance.attachments.filter(field_name=self.field_name).delete()
-            instance.attachments.create(file=file, field_name=self.field_name)
+            instance.attachments.filter(field_name=self.attachment_field_name).delete()
+            instance.attachments.create(file=file, field_name=self.attachment_field_name)
             file.status = models.UploadStatus.READY
             file.save()
         return instance

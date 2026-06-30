@@ -2,6 +2,7 @@ from rest_framework import permissions
 
 __CACHE = {}
 
+
 def permissions_class(*perms: str):
     class_name = f"RequiredPermissions{hash(perms)}"
     if class_name in __CACHE:
