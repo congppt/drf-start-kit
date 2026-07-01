@@ -22,7 +22,8 @@ class ChapterDetailSerializer(ExcludeDeleteModelSerializer):
         exclude = ["lexorank"]
 
     def _neighbor_qs(self, obj):
-        return models.Chapter.objects.filter(novel_id=obj.novel_id).exclude(pk=obj.pk)
+        base_qs = self.context["visible_chapters_qs"]
+        return base_qs.exclude(pk=obj.pk)
 
     def get_previous(self, obj):
         pk = (

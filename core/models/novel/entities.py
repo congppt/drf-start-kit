@@ -26,6 +26,9 @@ class Novel(AuditableModel):
 
     COVER_FIELD_NAME = "cover"
 
+    def __str__(self):
+        return self.title
+
 
 class Chapter(AuditableModel):
     novel = models.ForeignKey(Novel, on_delete=models.CASCADE, related_name="chapters")
