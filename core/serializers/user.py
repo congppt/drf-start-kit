@@ -12,6 +12,7 @@ from .common import (
     FileAttachmentSerializer,
     FilePresignedUploadUrlSerializer,
 )
+from .permission import PermissionSerializer
 
 AVATAR_FIELD_NAME = models.User.AVATAR_FIELD_NAME
 AVATAR_IS_PUBLIC = models.User.AVATAR_IS_PUBLIC
@@ -88,6 +89,11 @@ class UserSelfUpdateSerializer(UserUpdateSerializer):
     class Meta:
         model = models.User
         fields = ["first_name", "last_name", "email", "preferences"]
+
+
+class UserSelfSerializer(serializers.Serializer):
+    user = UserSerializer()
+    permissions = PermissionSerializer(many=True)
 
 
 class PasswordChangeSerializer(serializers.Serializer):

@@ -26,10 +26,12 @@ CHOICE_REGISTRY = _build_choice_registry(models.UploadStatus, models.LogLevel)
 
 
 class MetaViewSet(viewsets.GenericViewSet):
-    def get_serializer_class(self):
-        return serializers.ChoiceLimitOffsetSerializer
-
-    @action(detail=False, methods=["get"], url_path=r"(?P<key>[\w-]+)")
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path=r"(?P<key>[\w-]+)",
+        serializer_class=serializers.ChoiceLimitOffsetSerializer,
+    )
     def choices(self, request, key: str):
         choices_class = CHOICE_REGISTRY.get(key)
         if choices_class is None:
