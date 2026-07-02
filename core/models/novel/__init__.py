@@ -1,2 +1,2 @@
-from .entities import Chapter, Genre, Novel
+from .entities import Chapter, Genre, Novel, ReadingProgress
 from .enums import NovelStatus

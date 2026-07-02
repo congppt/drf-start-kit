@@ -43,3 +43,13 @@ class Chapter(AuditableModel):
 
     def __str__(self):
         return self.title
+
+
+class ReadingProgress(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="reading_progresses")
+    novel = models.ForeignKey(Novel, on_delete=models.CASCADE, related_name="reading_progresses")
+    chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE, related_name="reading_progresses")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["user", "novel"], name="uq_user_novel")]

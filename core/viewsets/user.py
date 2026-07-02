@@ -1,10 +1,11 @@
 import django_filters
 from django.db.models import Q
+from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .. import mixins, models, pagination, permissions, serializers, throttling
+from .. import filters, mixins, models, pagination, permissions, serializers, throttling
 
 
 class UserFilter(django_filters.FilterSet):
@@ -43,18 +44,6 @@ class UserViewSet(
                 return serializers.UserCreateSerializer
             case "update" | "partial_update":
                 return serializers.UserUpdateSerializer
-            case "update_self" | "partial_update_self":
-                return serializers.UserSelfUpdateSerializer
-            case "change_password":
-                return serializers.PasswordChangeSerializer
-            case "retrieve_self":
-                return serializers.UserSelfSerializer
-            case "change_password_self":
-                return serializers.PasswordSelfChangeSerializer
-            case "generate_avatar_upload_url_self":
-                return serializers.UserAvatarUploadUrlSerializer
-            case "change_avatar_self":
-                return serializers.UserAvatarSelfUpdateSerializer
             case _:
                 return super().get_serializer_class()
 
@@ -62,6 +51,7 @@ class UserViewSet(
         detail=False,
         methods=["patch"],
         url_path="me",
+        serializer_class=serializers.UserSelfUpdateSerializer,
         permission_classes=[permissions.IsAuthenticated],
     )
     def update_self(self, request, pk=None):
@@ -75,6 +65,7 @@ class UserViewSet(
         detail=False,
         methods=["get"],
         url_path="me",
+        serializer_class=serializers.UserSelfSerializer,
         permission_classes=[permissions.IsAuthenticated],
     )
     def retrieve_self(self, request):
@@ -91,6 +82,7 @@ class UserViewSet(
         detail=True,
         methods=["put"],
         url_path="password",
+        serializer_class=serializers.PasswordChangeSerializer,
     )
     def change_password(self, request, pk=None):
         instance = self.get_object()
@@ -103,6 +95,7 @@ class UserViewSet(
         detail=False,
         methods=["put"],
         url_path="me/password",
+        serializer_class=serializers.PasswordSelfChangeSerializer,
         permission_classes=[permissions.IsAuthenticated],
         throttle_classes=[throttling.factory.user_rate_throttle("10/minute")],
     )
@@ -117,6 +110,7 @@ class UserViewSet(
         detail=False,
         methods=["post"],
         url_path="me/avatar/presigned-upload-url",
+        serializer_class=serializers.UserAvatarUploadUrlSerializer,
         permission_classes=[permissions.IsAuthenticated],
         throttle_classes=[throttling.factory.user_rate_throttle("10/minute")],
     )
@@ -130,6 +124,7 @@ class UserViewSet(
         detail=False,
         methods=["put"],
         url_path="me/avatar",
+        serializer_class=serializers.UserAvatarSelfUpdateSerializer,
         permission_classes=[permissions.IsAuthenticated],
     )
     def change_avatar_self(self, request, pk=None):
@@ -138,3 +133,28 @@ class UserViewSet(
         serializer.is_valid(raise_exception=True)
         serializer.save(performed_by=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(responses=serializers.UserReadingProgressSerializer(many=True))
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="me/reading-progresses",
+        serializer_class=serializers.UserReadingProgressSerializer,
+        permission_classes=[permissions.IsAuthenticated],
+        pagination_class=pagination.Max100LimitOffsetPagination,
+        filter_backends=[filters.OrderingFilter],
+        ordering_fields=["updated_at"],
+        ordering=["-updated_at"],
+    )
+    def list_reading_progresses(self, request, pk=None):
+        queryset = self.filter_queryset(
+            models.ReadingProgress.objects.select_related("novel", "chapter")
+            .filter(user=request.user)
+            .exclude(Q(novel__status=models.NovelStatus.DRAFT) | Q(chapter__is_published=False))
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)

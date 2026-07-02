@@ -43,6 +43,23 @@ class NovelSerializer(ExcludeDeleteModelSerializer):
         return minio.presigned_download(file_asset.id, file_asset.name)
 
 
+class NovelChoiceSerializer(ChoiceSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    def get_image_url(self, obj: models.Novel) -> str | None:
+        attachment: models.FileAttachment = (
+            obj.attachments.filter(field_name=COVER_FIELD_NAME, file__status=models.UploadStatus.READY)
+            .select_related("file")
+            .first()
+        )
+        if not attachment:
+            return None
+        file_asset: models.FileAsset = attachment.file
+        if file_asset.is_public:
+            return minio.get_public_url(file_asset.id)
+        return minio.presigned_download(file_asset.id, file_asset.name)
+
+
 class NovelInputSerializer(ExcludeDeleteModelSerializer):
     slug = serializers.SlugField(read_only=True)
     genres = serializers.PrimaryKeyRelatedField(many=True, queryset=models.Genre.objects.all(), allow_empty=False)

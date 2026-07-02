@@ -25,7 +25,7 @@ class ChapterDetailSerializer(ExcludeDeleteModelSerializer):
         base_qs = self.context["visible_chapters_qs"]
         return base_qs.exclude(pk=obj.pk)
 
-    def get_previous(self, obj):
+    def get_previous(self, obj) -> int | None:
         pk = (
             self._neighbor_qs(obj)
             .filter(lexorank__lt=obj.lexorank)
@@ -35,7 +35,7 @@ class ChapterDetailSerializer(ExcludeDeleteModelSerializer):
         )
         return pk
 
-    def get_next(self, obj):
+    def get_next(self, obj) -> int | None:
         pk = (
             self._neighbor_qs(obj)
             .filter(lexorank__gt=obj.lexorank)
