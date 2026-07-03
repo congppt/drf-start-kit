@@ -96,7 +96,7 @@ class UserViewSet(
         url_path="me/password",
         serializer_class=serializers.PasswordSelfChangeSerializer,
         permission_classes=[permissions.IsAuthenticated],
-        throttle_classes=[throttling.factory.user_rate_throttle("10/minute")],
+        throttle_classes=[throttling.factory.per_view_user_rate_throttle("10/minute")],
     )
     def change_password_self(self, request, pk=None):
         instance = request.user
@@ -111,7 +111,7 @@ class UserViewSet(
         url_path="me/avatar/presigned-upload-url",
         serializer_class=serializers.UserAvatarUploadUrlSerializer,
         permission_classes=[permissions.IsAuthenticated],
-        throttle_classes=[throttling.factory.user_rate_throttle("10/minute")],
+        throttle_classes=[throttling.factory.per_view_user_rate_throttle("10/minute")],
     )
     def generate_avatar_upload_url_self(self, request, pk=None):
         serializer = self.get_serializer(data=request.data)
