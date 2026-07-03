@@ -5,15 +5,15 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
-from ..throttling import factory
+from .. import throttling
 
 
 class ThrottleTokenObtainPairView(TokenObtainPairView):
-    throttle_classes = [factory.anon_rate_throttle("5/minute")]
+    throttle_classes = [throttling.AuthThrottle, throttling.factory.per_view_anon_rate_throttle("30/minute")]
 
 
 class ThrottleTokenRefreshView(TokenRefreshView):
-    throttle_classes = [factory.anon_rate_throttle("5/minute")]
+    throttle_classes = [throttling.ReAuthThrottle, throttling.factory.per_view_anon_rate_throttle("30/minute")]
 
 
 urlpatterns = [
