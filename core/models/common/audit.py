@@ -18,10 +18,10 @@ def _validate_performed_by(value: AbstractUser):
 class _AuditableQuerySet(models.QuerySet):
     def delete(self, performed_by: AbstractUser):
         performed_by = _validate_performed_by(performed_by)
-        return super().update(is_deleted=True, deleted=timezone.now(), deleted_by=performed_by.username)
+        return super().update(is_deleted=True, deleted_at=timezone.now(), deleted_by=performed_by.username)
 
     def restore(self):
-        return super().update(is_deleted=False, deleted=None, deleted_by=None)
+        return super().update(is_deleted=False, deleted_at=None, deleted_by=None)
 
     def update(self, **kwargs):
         user = _validate_performed_by(kwargs.pop("performed_by"))
@@ -67,12 +67,12 @@ class AuditableModel(models.Model):
     objects = AuditableManager()
     all_objects = models.Manager()
 
-    created = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.CharField(max_length=150, null=True)
-    updated = models.DateTimeField(auto_now=True)
+    updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.CharField(max_length=150, null=True)
     is_deleted = models.BooleanField(default=False, db_index=True)
-    deleted = models.DateTimeField(null=True)
+    deleted_at = models.DateTimeField(null=True)
     deleted_by = models.CharField(max_length=150, null=True)
 
     class Meta:
@@ -81,15 +81,15 @@ class AuditableModel(models.Model):
     def delete(self, *args, **kwargs):
         user = _validate_performed_by(kwargs.get("performed_by"))
         self.is_deleted = True
-        self.deleted = timezone.now()
+        self.deleted_at = timezone.now()
         self.deleted_by = user.username
-        self.save(update_fields=["is_deleted", "deleted", "deleted_by"], *args, **kwargs)
+        self.save(update_fields=["is_deleted", "deleted_at", "deleted_by"], *args, **kwargs)
 
     def restore(self):
         self.is_deleted = False
-        self.deleted = None
+        self.deleted_at = None
         self.deleted_by = None
-        super().save(update_fields=["is_deleted", "deleted", "deleted_by"])
+        super().save(update_fields=["is_deleted", "deleted_at", "deleted_by"])
 
     def save(self, *args, **kwargs):
         user = _validate_performed_by(kwargs.pop("performed_by"))

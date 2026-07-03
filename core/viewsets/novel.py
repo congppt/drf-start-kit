@@ -64,7 +64,7 @@ class NovelViewSet(mixins.ChoiceListModelMixin, AuditableModelViewSet):
         methods=["post"],
         url_path="cover/presigned-upload-url",
         serializer_class=serializers.NovelCoverUploadUrlSerializer,
-        throttle_classes=[throttling.factory.user_rate_throttle("10/minute")],
+        throttle_classes=[throttling.factory.per_view_user_rate_throttle("10/minute")],
     )
     def generate_cover_upload_url(self, request, pk=None):
         # Check if the user has permission to change the novel

@@ -15,7 +15,7 @@ class FileAsset(models.Model):
     is_public = models.BooleanField(default=False)
     owner = models.CharField(max_length=150)
     status = models.CharField(max_length=10, choices=UploadStatus.choices, default=UploadStatus.PENDING, db_index=True)
-    created = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 class FileAttachment(models.Model):

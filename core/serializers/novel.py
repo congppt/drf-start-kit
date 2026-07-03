@@ -1,6 +1,7 @@
 import uuid
 
 from django.db import transaction
+from django.utils import timezone
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
@@ -17,6 +18,7 @@ from .common import (
 
 COVER_FIELD_NAME = models.Novel.COVER_FIELD_NAME
 COVER_IS_PUBLIC = True
+READ_EVENT_CREATE_RESTRICTED_SECONDS = models.NovelReadEvent.CREATE_RESTRICTED_SECONDS
 
 
 class NovelSerializer(ExcludeDeleteModelSerializer):
@@ -100,3 +102,21 @@ class NovelCoverUpdateSerializer(FileAttachmentSerializer):
             file.status = models.UploadStatus.READY
             file.save()
         return instance
+
+
+class NovelReadEventSerializer(serializers.ModelSerializer):
+    viewer_id = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = models.NovelReadEvent
+        fields = "__all__"
+        validators = []
+
+    def validate(self, attrs: dict):
+        if models.NovelReadEvent.objects.filter(
+            novel=attrs["novel"],
+            viewer_id=attrs["viewer_id"],
+            created_at__gte=timezone.now() - timezone.timedelta(seconds=READ_EVENT_CREATE_RESTRICTED_SECONDS),
+        ).exists():
+            raise serializers.ValidationError(_("Today's read counted"))
+        return attrs

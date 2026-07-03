@@ -15,12 +15,12 @@ class AuditableModelSerializer(serializers.ModelSerializer):
     def get_extra_kwargs(self):
         with self._extend_meta_read_only(
             [
-                "created",
+                "created_at",
                 "created_by",
-                "updated",
+                "updated_at",
                 "updated_by",
                 "is_deleted",
-                "deleted",
+                "deleted_at",
                 "deleted_by",
             ]
         ):
@@ -102,7 +102,7 @@ class ExcludeDeleteModelSerializer(AuditableModelSerializer):
     """
 
     def get_field_names(self, declared_fields, info):
-        with self._extend_meta_exclude(["is_deleted", "deleted", "deleted_by"]):
+        with self._extend_meta_exclude(["is_deleted", "deleted_at", "deleted_by"]):
             return super().get_field_names(declared_fields, info)
 
 
@@ -112,5 +112,5 @@ class ExcludeAuditableModelSerializer(ExcludeDeleteModelSerializer):
     """
 
     def get_field_names(self, declared_fields, info):
-        with self._extend_meta_exclude(["created", "created_by", "updated", "updated_by"]):
+        with self._extend_meta_exclude(["created_at", "created_by", "updated_at", "updated_by"]):
             return super().get_field_names(declared_fields, info)

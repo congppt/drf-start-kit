@@ -327,9 +327,9 @@ If a choice needs a UI color token, expose it on the enum member (for example a 
 
 `core.models.common.AuditableModel` adds audit fields and soft delete behavior:
 
-- `created`, `created_by`
-- `updated`, `updated_by`
-- `is_deleted`, `deleted`, `deleted_by`
+- `created_at`, `created_by`
+- `updated_at`, `updated_by`
+- `is_deleted`, `deleted_at`, `deleted_by`
 
 The default `objects` manager hides soft-deleted rows. Use `all_objects` when an admin or maintenance flow must include deleted records.
 
@@ -639,23 +639,23 @@ cutoff = timezone.now() - timedelta(days=7)
 Prefer Django to stamp timestamps:
 
 ```python
-created = models.DateTimeField(auto_now_add=True)
-updated = models.DateTimeField(auto_now=True)
+created_at = models.DateTimeField(auto_now_add=True)
+updated_at = models.DateTimeField(auto_now=True)
 ```
 
 When you need an explicit default on create, pass the callable, not the result:
 
 ```python
 # correct
-deleted = models.DateTimeField(null=True, blank=True)
+deleted_at = models.DateTimeField(null=True, blank=True)
 
 def mark_deleted(self):
-    self.deleted = timezone.now()
+    self.deleted_at = timezone.now()
 ```
 
 ```python
 # wrong — evaluates once at import time
-deleted = models.DateTimeField(default=timezone.now())
+deleted_at = models.DateTimeField(default=timezone.now())
 ```
 
 See `AuditableModel` in `core/models/common/audit.py` for soft-delete timestamps.
@@ -679,7 +679,7 @@ For relative windows in list filters, compute the boundary once, then filter:
 
 ```python
 since = timezone.now() - timedelta(days=30)
-queryset.filter(created__gte=since)
+queryset.filter(created_at__gte=since)
 ```
 
 Keep units explicit (`seconds=`, `minutes=`, `days=`). Do not multiply hours by hand unless you document why.
@@ -1050,7 +1050,7 @@ class AuditEvent(models.Model):
     resource_type = models.CharField(max_length=100)
     resource_id = models.CharField(max_length=64)
     changes = models.JSONField(default=dict)  # {"field": {"old": "...", "new": "..."}}
-    created = models.DateTimeField(auto_now_add=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 ```
 
 Example write helper inside a serializer `update()`:
@@ -1070,7 +1070,7 @@ Example read-only API:
 
 ```python
 class AuditEventViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-    queryset = AuditEvent.objects.all().order_by("-created")
+    queryset = AuditEvent.objects.all().order_by("-created_at")
     serializer_class = AuditEventSerializer
     permission_classes = [permissions.factory.permissions_class("core.view_auditevent")]
     filterset_fields = ["resource_type", "resource_id", "actor"]

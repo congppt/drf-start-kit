@@ -17,7 +17,7 @@ def minio_garbage_collect():
     logger.info("Starting minio garbage collection")
     base_qs = models.FileAsset.objects.filter(
         status=models.UploadStatus.PENDING,
-        created__lt=timezone.now() - timezone.timedelta(seconds=settings.FILE_ORPHANED_INTERVAL),
+        created_at__lt=timezone.now() - timezone.timedelta(seconds=settings.FILE_ORPHANED_INTERVAL),
     )
     with transaction.atomic():
         orphaned_public_file_ids = base_qs.filter(is_public=True).values_list("id", flat=True)
