@@ -104,7 +104,7 @@ class ChapterInputSerializer(ExcludeDeleteModelSerializer):
     def update(self, instance, validated_data):
         is_published = validated_data.get("is_published")
         with transaction.atomic():
-            if is_published and not instance.published_at:
+            if is_published and not instance.is_published:
                 validated_data["published_at"] = timezone.now()
                 models.Novel.objects.filter(id=instance.novel_id).update(
                     last_publication_at=validated_data["published_at"]

@@ -46,5 +46,5 @@ class NovelReadingProgressInputSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         instance.chapter = validated_data["chapter"]
-        instance.save(performed_by=self.context["user"])
+        instance.save()
         return instance

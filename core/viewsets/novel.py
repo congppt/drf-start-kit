@@ -39,8 +39,6 @@ class NovelViewSet(mixins.ChoiceListModelMixin, AuditableModelViewSet):
         match self.action:
             case "create" | "update" | "partial_update":
                 return serializers.NovelInputSerializer
-            case "retrieve_reading_progress":
-                return serializers.NovelReadingProgressSerializer
             case "update_reading_progress":
                 return serializers.NovelReadingProgressInputSerializer
             case _:
@@ -105,6 +103,7 @@ class NovelViewSet(mixins.ChoiceListModelMixin, AuditableModelViewSet):
         detail=True,
         methods=["get"],
         url_path="reading-progress",
+        serializer_class=serializers.NovelReadingProgressSerializer,
         permission_classes=[permissions.IsAuthenticated],
     )
     def retrieve_reading_progress(self, request, pk=None):
@@ -133,7 +132,7 @@ class NovelViewSet(mixins.ChoiceListModelMixin, AuditableModelViewSet):
         pagination_class=pagination.Max100LimitOffsetPagination,
         filter_backends=[],
     )
-    def get_suggestions(self, request):
+    def list_suggestions(self, request):
         SUGGESTION_WEEKLY_READ_WEIGHT = 7
         SUGGESTION_READ_COUNT_WEIGHT = 2
         SUGGESTION_RECENCY_RECENT_SCORE = 10
