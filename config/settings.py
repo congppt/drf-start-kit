@@ -91,6 +91,11 @@ SPECTACULAR_SETTINGS = {
         "drf_spectacular.contrib.djangorestframework_camel_case.camelize_serializer_fields",
         "drf_spectacular.hooks.postprocess_schema_enums",
     ],
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "tagsSorter": "alpha",
+        "operationsSorter": "alpha",
+    },
 }
 
 JSON_CAMEL_CASE = {"RENDERER_CLASS": "drf_orjson_renderer.renderers.ORJSONRenderer"}

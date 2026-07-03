@@ -22,6 +22,7 @@ class Novel(AuditableModel):
     genres = models.ManyToManyField(Genre, related_name="novels")
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="novels")
     status = models.CharField(choices=NovelStatus.choices, default=NovelStatus.DRAFT, db_index=True)
+    last_publication_at = models.DateTimeField(null=True, db_index=True)
     attachments = GenericRelation(FileAttachment)
 
     COVER_FIELD_NAME = "cover"

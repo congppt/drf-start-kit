@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
@@ -92,12 +93,20 @@ class ChapterInputSerializer(ExcludeDeleteModelSerializer):
 
     def create(self, validated_data):
         is_published = validated_data.get("is_published")
-        if is_published:
-            validated_data["published_at"] = timezone.now()
-        return super().create(validated_data)
+        with transaction.atomic():
+            if is_published:
+                validated_data["published_at"] = timezone.now()
+                models.Novel.objects.filter(id=validated_data["novel_id"]).update(
+                    last_publication_at=validated_data["published_at"]
+                )
+            return super().create(validated_data)
 
     def update(self, instance, validated_data):
         is_published = validated_data.get("is_published")
-        if is_published and not instance.published_at:
-            validated_data["published_at"] = timezone.now()
-        return super().update(instance, validated_data)
+        with transaction.atomic():
+            if is_published and not instance.published_at:
+                validated_data["published_at"] = timezone.now()
+                models.Novel.objects.filter(id=instance.novel_id).update(
+                    last_publication_at=validated_data["published_at"]
+                )
+            return super().update(instance, validated_data)

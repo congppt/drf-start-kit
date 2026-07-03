@@ -26,6 +26,8 @@ class NovelSerializer(ExcludeDeleteModelSerializer):
     author = ChoiceSerializer(read_only=True)
     genres = ChoiceSerializer(many=True, read_only=True)
     status = ChoiceSerializer(read_only=True)
+    read_count = serializers.IntegerField(read_only=True, default=0)
+    weekly_read_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = models.Novel

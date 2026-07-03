@@ -1,14 +1,16 @@
 import contextlib
 
 import django_filters
-from django.db.models import Q, Value
+from django.db.models import Case, Count, F, IntegerField, Q, Value, When
 from django.db.models.functions import Concat
+from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from .. import mixins, models, permissions, serializers, throttling
+from .. import filters, mixins, models, pagination, permissions, serializers, throttling
 from .common import AuditableModelViewSet
 
 
@@ -31,6 +33,7 @@ class NovelViewSet(mixins.ChoiceListModelMixin, AuditableModelViewSet):
     serializer_class = serializers.NovelSerializer
     filterset_class = NovelFilter
     search_fields = ["title", "blurb", "author_name"]
+    ordering_fields = ["read_count", "weekly_read_count", "created_at"]
 
     def get_serializer_class(self):
         match self.action:
@@ -44,7 +47,18 @@ class NovelViewSet(mixins.ChoiceListModelMixin, AuditableModelViewSet):
                 return super().get_serializer_class()
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        since_week = timezone.now() - timezone.timedelta(days=7)
+        queryset = (
+            super()
+            .get_queryset()
+            .annotate(
+                read_count=Count("read_events"),
+                weekly_read_count=Count(
+                    "read_events",
+                    filter=Q(read_events__created_at__gte=since_week),
+                ),
+            )
+        )
         user = self.request.user
         if user.has_perm("core.view_novel"):
             return queryset
@@ -108,4 +122,51 @@ class NovelViewSet(mixins.ChoiceListModelMixin, AuditableModelViewSet):
         serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(user=request.user, novel_id=pk)
+        return Response(serializer.data)
+
+    @extend_schema(responses=serializers.NovelSerializer(many=True))
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="suggestions",
+        permission_classes=[permissions.AllowAny],
+        pagination_class=pagination.Max100LimitOffsetPagination,
+        filter_backends=[],
+    )
+    def get_suggestions(self, request):
+        SUGGESTION_WEEKLY_READ_WEIGHT = 7
+        SUGGESTION_READ_COUNT_WEIGHT = 2
+        SUGGESTION_RECENCY_RECENT_SCORE = 10
+        SUGGESTION_RECENCY_MONTH_SCORE = 5
+        since_week = timezone.now() - timezone.timedelta(days=7)
+        since_month = timezone.now() - timezone.timedelta(days=30)
+        queryset = (
+            super()
+            .get_queryset()
+            .exclude(status=models.NovelStatus.DRAFT)
+            .annotate(
+                read_count=Count("read_events"),
+                weekly_read_count=Count(
+                    "read_events",
+                    filter=Q(read_events__created_at__gte=since_week),
+                ),
+                recency_score=Case(
+                    When(last_publication_at__gte=since_week, then=Value(SUGGESTION_RECENCY_RECENT_SCORE)),
+                    When(last_publication_at__gte=since_month, then=Value(SUGGESTION_RECENCY_MONTH_SCORE)),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                ),
+                suggestion_score=(
+                    F("weekly_read_count") * Value(SUGGESTION_WEEKLY_READ_WEIGHT)
+                    + F("read_count") * Value(SUGGESTION_READ_COUNT_WEIGHT)
+                    + F("recency_score")
+                ),
+            )
+            .order_by("-suggestion_score", "-weekly_read_count")
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
