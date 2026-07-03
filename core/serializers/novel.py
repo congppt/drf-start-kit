@@ -2,6 +2,7 @@ import uuid
 
 from django.db import transaction
 from django.utils.text import slugify
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from integrations.minio import minio
@@ -78,7 +79,7 @@ class NovelInputSerializer(ExcludeDeleteModelSerializer):
         try:
             return super().create(validated_data)
         except Exception as e:
-            raise serializers.ValidationError("Could not create. Please try again later.") from e
+            raise serializers.ValidationError(_("Could not create. Please try again later.")) from e
 
 
 class NovelCoverUploadUrlSerializer(FilePresignedUploadUrlSerializer):

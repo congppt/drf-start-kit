@@ -30,7 +30,7 @@ class UserSerializer(ExcludeDeleteModelSerializer):
 
     class Meta:
         model = models.User
-        exclude = ["password", "user_permissions"]
+        exclude = ["password", "user_permissions", "last_login", "date_joined", "is_staff", "is_superuser"]
 
     def get_avatar_url(self, obj: models.User) -> str | None:
         attachment = (
@@ -50,13 +50,12 @@ class UserChoicesSerializer(ChoiceSerializer):
     value = serializers.PrimaryKeyRelatedField(queryset=models.User.objects.all(), source="pk")
 
 
-class UserCreateSerializer(UserSerializer):
+class UserCreateSerializer(ExcludeDeleteModelSerializer):
     password = serializers.CharField(validators=[password_validation.validate_password])
-    groups = serializers.PrimaryKeyRelatedField(many=True, queryset=models.Group.objects.all())
 
     class Meta:
         model = models.User
-        exclude = ["user_permissions", "last_login", "date_joined"]
+        exclude = ["user_permissions", "last_login", "date_joined", "is_staff", "is_superuser"]
 
     def create(self, validated_data: dict):
         groups = validated_data.pop("groups")
@@ -71,7 +70,7 @@ class UserUpdateSerializer(UserSerializer):
 
     class Meta:
         model = models.User
-        exclude = ["username", "password", "last_login", "date_joined", "user_permissions"]
+        exclude = ["username", "password", "last_login", "date_joined", "user_permissions", "is_staff", "is_superuser"]
 
     def update(self, instance: models.User, validated_data: dict):
         performed_by = validated_data.pop("performed_by")

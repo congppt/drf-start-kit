@@ -1,3 +1,4 @@
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from .. import models
@@ -30,9 +31,9 @@ class NovelReadingProgressInputSerializer(serializers.ModelSerializer):
 
     def validate_chapter(self, value: models.Chapter):
         if value.novel_id != self.context["novel_id"]:
-            raise serializers.ValidationError("Chapter does not belong to the novel.")
+            raise serializers.ValidationError(_("Chapter does not belong to the novel."))
         if not value.is_published or value.novel.status == models.NovelStatus.DRAFT:
-            raise serializers.ValidationError("Chapter not available.")
+            raise serializers.ValidationError(_("Chapter not available."))
         return value
 
     def create(self, validated_data):

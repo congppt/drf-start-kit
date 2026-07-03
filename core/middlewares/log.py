@@ -6,7 +6,6 @@ import uuid
 from typing import Any
 from urllib.parse import parse_qs
 
-from asgiref.sync import iscoroutinefunction, markcoroutinefunction
 from django.conf import settings
 from rest_framework_simplejwt.tokens import AccessToken
 
@@ -47,13 +46,11 @@ def _is_sensitive_key(key: str) -> bool:
 
 
 class LoggingMiddleware:
-    async_capable = True
-    sync_capable = False
+    sync_capable = True
+    async_capable = False
 
     def __init__(self, get_response):
         self.get_response = get_response
-        if iscoroutinefunction(self.get_response):
-            markcoroutinefunction(self)
 
     def __get_client_ip(self, request):
         ip_addresses = request.headers.get("x-forwarded-for")
@@ -117,10 +114,10 @@ class LoggingMiddleware:
                 username = token[settings.SIMPLE_JWT["USERNAME_CLAIM"]]
         return username
 
-    async def __call__(self, request):
+    def __call__(self, request):
         start = time.perf_counter()
         extra = self.__extract_request_info(request)
-        response = await self.get_response(request)
+        response = self.get_response(request)
         process_duration = time.perf_counter() - start
         extra["duration"] = process_duration
         extra["status_code"] = response.status_code

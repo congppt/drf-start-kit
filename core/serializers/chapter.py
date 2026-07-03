@@ -1,4 +1,5 @@
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from utils import lexorank
@@ -60,9 +61,9 @@ class ChapterInputSerializer(ExcludeDeleteModelSerializer):
         if not value:
             return None
         if value.novel_id != self.context["novel_id"]:
-            raise serializers.ValidationError("Invalid chapter position.")
+            raise serializers.ValidationError(_("Invalid chapter position."))
         if self.instance and value.pk == self.instance.pk:
-            raise serializers.ValidationError("Invalid chapter position.")
+            raise serializers.ValidationError(_("Invalid chapter position."))
         return value
 
     def validate(self, attrs):
@@ -86,7 +87,7 @@ class ChapterInputSerializer(ExcludeDeleteModelSerializer):
         try:
             attrs["lexorank"] = lexorank.get_rank(prev_rank, next_rank)
         except ValueError:
-            raise serializers.ValidationError("Invalid chapter position.")
+            raise serializers.ValidationError(_("Invalid chapter position."))
         return attrs
 
     def create(self, validated_data):
