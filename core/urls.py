@@ -8,9 +8,9 @@ from . import views
 urlpatterns = []
 if not env.IS_PRODUCTION:
     urlpatterns = [
-            path("schema/", SpectacularAPIView.as_view(), name="schema"),
-            path("schema/swagger/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
-            path("", RedirectView.as_view(url="schema/swagger/", permanent=False)),
+        path("schema/", SpectacularAPIView.as_view(), name="schema"),
+        path("schema/swagger/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+        path("", RedirectView.as_view(url="schema/swagger/", permanent=False)),
     ]
 
 urlpatterns.extend(views.urlpatterns)

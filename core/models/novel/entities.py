@@ -53,7 +53,7 @@ class ReadingProgress(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["user", "novel"], name="uq_user_novel")]
+        constraints = [models.UniqueConstraint(fields=["user", "novel"], name="uq_readingprogress_user_novel")]
 
 
 class NovelReadEvent(models.Model):
@@ -65,3 +65,12 @@ class NovelReadEvent(models.Model):
         constraints = [models.UniqueConstraint(fields=["novel", "viewer_id"], name="uq_novel_viewer")]
 
     CREATE_RESTRICTED_SECONDS = 60 * 60 * 24  # 24 hours
+
+
+class Bookmark(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="bookmarks")
+    novel = models.ForeignKey(Novel, on_delete=models.CASCADE, related_name="bookmarks")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["user", "novel"], name="uq_bookmark_user_novel")]

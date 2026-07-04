@@ -1,7 +1,7 @@
 import contextlib
 
 import django_filters
-from django.db.models import Case, Count, F, IntegerField, Q, Value, When
+from django.db.models import Case, Count, Exists, F, IntegerField, OuterRef, Q, Value, When
 from django.db.models.functions import Concat
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -45,6 +45,7 @@ class NovelViewSet(mixins.ChoiceListModelMixin, AuditableModelViewSet):
                 return super().get_serializer_class()
 
     def get_queryset(self):
+        user = self.request.user
         since_week = timezone.now() - timezone.timedelta(days=7)
         queryset = (
             super()
@@ -55,9 +56,9 @@ class NovelViewSet(mixins.ChoiceListModelMixin, AuditableModelViewSet):
                     "read_events",
                     filter=Q(read_events__created_at__gte=since_week),
                 ),
+                is_bookmarked=Exists(models.Bookmark.objects.filter(user=user, novel_id=OuterRef("id"))),
             )
         )
-        user = self.request.user
         if user.has_perm("core.view_novel"):
             return queryset
         if user.is_authenticated:
@@ -149,6 +150,7 @@ class NovelViewSet(mixins.ChoiceListModelMixin, AuditableModelViewSet):
                     "read_events",
                     filter=Q(read_events__created_at__gte=since_week),
                 ),
+                is_bookmarked=Exists(models.Bookmark.objects.filter(user=request.user, novel_id=OuterRef("id"))),
                 recency_score=Case(
                     When(last_publication_at__gte=since_week, then=Value(SUGGESTION_RECENCY_RECENT_SCORE)),
                     When(last_publication_at__gte=since_month, then=Value(SUGGESTION_RECENCY_MONTH_SCORE)),

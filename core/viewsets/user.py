@@ -1,8 +1,9 @@
 import django_filters
 from django.db.models import Q
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
 from .. import filters, mixins, models, pagination, permissions, serializers, throttling
@@ -44,8 +45,15 @@ class UserViewSet(
                 return serializers.UserCreateSerializer
             case "update" | "partial_update":
                 return serializers.UserUpdateSerializer
+            case "create_bookmark":
+                return serializers.UserBookmarkCreateSerializer
             case _:
                 return super().get_serializer_class()
+
+    def get_permissions(self):
+        if self.action == "create":
+            return [permissions.AllowAny()]
+        return super().get_permissions()
 
     @action(
         detail=False,
@@ -158,3 +166,50 @@ class UserViewSet(
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+    @extend_schema(responses=serializers.UserBookmarkSerializer(many=True))
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="me/bookmarks",
+        serializer_class=serializers.UserBookmarkSerializer,
+        permission_classes=[permissions.IsAuthenticated],
+        pagination_class=pagination.Max100LimitOffsetPagination,
+        filter_backends=[filters.OrderingFilter],
+        ordering_fields=["created_at"],
+        ordering=["-created_at"],
+    )
+    def list_bookmarks(self, request, pk=None):
+        queryset = self.filter_queryset(
+            models.Bookmark.objects.prefetch_related("novel__genres", "novel__attachments__file")
+            .filter(user=request.user)
+            .exclude(novel__status=models.NovelStatus.DRAFT)
+            .order_by("-created_at")
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @extend_schema()
+    @list_bookmarks.mapping.post
+    def create_bookmark(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(parameters=[OpenApiParameter(name="id", description="Bookmark ID", location=OpenApiParameter.PATH, type=int)])
+    @action(
+        detail=False,
+        methods=["delete"],
+        url_path=r"me/bookmarks/(?P<pk>\d+)",
+        permission_classes=[permissions.IsAuthenticated, permissions.factory.object_permission_class("user")],
+    )
+    def destroy_bookmark(self, request, pk):
+        instance: models.Bookmark = get_object_or_404(models.Bookmark.objects.filter(user=request.user), pk=pk)
+        self.check_object_permissions(request, instance)
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

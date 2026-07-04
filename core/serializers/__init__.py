@@ -1,5 +1,6 @@
 from rest_framework.serializers import ModelSerializer, Serializer
 
+from .bookmark import UserBookmarkCreateSerializer, UserBookmarkSerializer
 from .chapter import ChapterDetailSerializer, ChapterInputSerializer, ChapterListSerializer
 from .common import (
     AuditableModelSerializer,

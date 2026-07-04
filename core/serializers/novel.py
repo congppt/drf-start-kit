@@ -28,6 +28,7 @@ class NovelSerializer(ExcludeDeleteModelSerializer):
     status = ChoiceSerializer(read_only=True)
     read_count = serializers.IntegerField(read_only=True, default=0)
     weekly_read_count = serializers.IntegerField(read_only=True, default=0)
+    is_bookmarked = serializers.BooleanField(read_only=True, default=False)
 
     class Meta:
         model = models.Novel
@@ -115,6 +116,7 @@ class NovelReadEventSerializer(serializers.ModelSerializer):
         validators = []
 
     def validate(self, attrs: dict):
+        attrs = super().validate(attrs)
         if models.NovelReadEvent.objects.filter(
             novel=attrs["novel"],
             viewer_id=attrs["viewer_id"],
