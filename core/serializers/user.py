@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 from integrations.minio import minio
 
-from .. import models, validators
+from .. import constants, models, validators
 from .common import (
     ChoiceSerializer,
     ExcludeDeleteModelSerializer,
@@ -58,6 +58,10 @@ class UserCreateSerializer(ExcludeDeleteModelSerializer):
         exclude = ["user_permissions", "last_login", "date_joined", "is_staff", "is_superuser"]
 
     def create(self, validated_data: dict):
+        user = validated_data["performed_by"]
+        if user.is_anonymous:
+            validated_data["performed_by"] = constants.SYSTEM_ACTOR
+            validated_data["groups"] = []
         groups = validated_data.pop("groups")
         with transaction.atomic():
             user = models.User.objects.create_user(**validated_data)
