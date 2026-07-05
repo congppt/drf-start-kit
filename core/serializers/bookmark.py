@@ -6,7 +6,7 @@ from . import novel
 
 
 class UserBookmarkSerializer(serializers.ModelSerializer):
-    novel = novel.NovelSerializer()
+    novel = novel.NovelListSerializer()
 
     class Meta:
         model = models.Bookmark

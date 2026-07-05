@@ -21,14 +21,11 @@ COVER_IS_PUBLIC = True
 READ_EVENT_CREATE_RESTRICTED_SECONDS = models.NovelReadEvent.CREATE_RESTRICTED_SECONDS
 
 
-class NovelSerializer(ExcludeDeleteModelSerializer):
+class NovelListSerializer(ExcludeDeleteModelSerializer):
     cover_url = serializers.SerializerMethodField()
     author = ChoiceSerializer(read_only=True)
     genres = ChoiceSerializer(many=True, read_only=True)
     status = ChoiceSerializer(read_only=True)
-    read_count = serializers.IntegerField(read_only=True, default=0)
-    weekly_read_count = serializers.IntegerField(read_only=True, default=0)
-    is_bookmarked = serializers.BooleanField(read_only=True, default=False)
 
     class Meta:
         model = models.Novel
@@ -36,31 +33,38 @@ class NovelSerializer(ExcludeDeleteModelSerializer):
         read_only_fields = ["slug"]
 
     def get_cover_url(self, obj: models.Novel) -> str | None:
-        attachment: models.FileAttachment = (
-            obj.attachments.filter(field_name=COVER_FIELD_NAME, file__status=models.UploadStatus.READY)
-            .select_related("file")
-            .first()
-        )
-        if not attachment:
+        file_asset: models.FileAsset | None = None
+        for attachment in obj.attachments.all():
+            if attachment.field_name == COVER_FIELD_NAME and attachment.file.status == models.UploadStatus.READY:
+                file_asset = attachment.file
+                break
+        if not file_asset:
             return None
-        file_asset: models.FileAsset = attachment.file
         if file_asset.is_public:
             return minio.get_public_url(file_asset.id)
         return minio.presigned_download(file_asset.id, file_asset.name)
+
+
+class NovelSuggestionSerializer(NovelListSerializer):
+    read_count = serializers.IntegerField(read_only=True, default=0)
+    weekly_read_count = serializers.IntegerField(read_only=True, default=0)
+
+
+class NovelDetailSerializer(NovelSuggestionSerializer):
+    has_bookmark = serializers.BooleanField(read_only=True, default=False)
 
 
 class NovelChoiceSerializer(ChoiceSerializer):
     image_url = serializers.SerializerMethodField()
 
     def get_image_url(self, obj: models.Novel) -> str | None:
-        attachment: models.FileAttachment = (
-            obj.attachments.filter(field_name=COVER_FIELD_NAME, file__status=models.UploadStatus.READY)
-            .select_related("file")
-            .first()
-        )
-        if not attachment:
+        file_asset: models.FileAsset | None = None
+        for attachment in obj.attachments.all():
+            if attachment.field_name == COVER_FIELD_NAME and attachment.file.status == models.UploadStatus.READY:
+                file_asset = attachment.file
+                break
+        if not file_asset:
             return None
-        file_asset: models.FileAsset = attachment.file
         if file_asset.is_public:
             return minio.get_public_url(file_asset.id)
         return minio.presigned_download(file_asset.id, file_asset.name)

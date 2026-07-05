@@ -15,9 +15,11 @@ from .group import GroupSerializer
 from .novel import (
     NovelCoverUpdateSerializer,
     NovelCoverUploadUrlSerializer,
+    NovelDetailSerializer,
     NovelInputSerializer,
+    NovelListSerializer,
     NovelReadEventSerializer,
-    NovelSerializer,
+    NovelSuggestionSerializer,
 )
 from .permission import PermissionSerializer
 from .reading_progress import (

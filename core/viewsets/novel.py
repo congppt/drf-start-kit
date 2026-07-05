@@ -30,7 +30,7 @@ class NovelViewSet(mixins.ChoiceListModelMixin, AuditableModelViewSet):
         .all()
     )
     permission_classes = [permissions.NovelPermission]
-    serializer_class = serializers.NovelSerializer
+    serializer_class = serializers.NovelListSerializer
     filterset_class = NovelFilter
     search_fields = ["title", "blurb", "author_name"]
     ordering_fields = ["read_count", "weekly_read_count", "created_at"]
@@ -41,27 +41,33 @@ class NovelViewSet(mixins.ChoiceListModelMixin, AuditableModelViewSet):
                 return serializers.NovelInputSerializer
             case "update_reading_progress":
                 return serializers.NovelReadingProgressInputSerializer
+            case "retrieve":
+                return serializers.NovelDetailSerializer
             case _:
                 return super().get_serializer_class()
 
+    def _annotate_read_stats(self, queryset):
+        since_week = timezone.now() - timezone.timedelta(days=7)
+        return queryset.annotate(
+            read_count=Count("read_events"),
+            weekly_read_count=Count(
+                "read_events",
+                filter=Q(read_events__created_at__gte=since_week),
+            ),
+        )
+
     def get_queryset(self):
         user = self.request.user
-        since_week = timezone.now() - timezone.timedelta(days=7)
-        queryset = (
-            super()
-            .get_queryset()
-            .annotate(
-                read_count=Count("read_events"),
-                weekly_read_count=Count(
-                    "read_events",
-                    filter=Q(read_events__created_at__gte=since_week),
-                ),
-                is_bookmarked=Exists(models.Bookmark.objects.filter(user=user, novel_id=OuterRef("id"))),
-            )
-        )
+        queryset = super().get_queryset()
+        if self.action in {"retrieve", "list_suggestions"}:
+            queryset = self._annotate_read_stats(queryset)
+            if self.action == "retrieve":
+                queryset = queryset.annotate(
+                    has_bookmark=Exists(models.Bookmark.objects.filter(user=user, novel=OuterRef("pk"))),
+                )
         if user.has_perm("core.view_novel"):
             return queryset
-        if user.is_authenticated:
+        if user.is_authenticated and self.detail:
             return queryset.filter(~Q(status=models.NovelStatus.DRAFT) | Q(author=user))
         return queryset.exclude(status=models.NovelStatus.DRAFT)
 
@@ -124,11 +130,12 @@ class NovelViewSet(mixins.ChoiceListModelMixin, AuditableModelViewSet):
         serializer.save(user=request.user, novel_id=pk)
         return Response(serializer.data)
 
-    @extend_schema(responses=serializers.NovelSerializer(many=True))
+    @extend_schema(responses=serializers.NovelSuggestionSerializer(many=True))
     @action(
         detail=False,
         methods=["get"],
         url_path="suggestions",
+        serializer_class=serializers.NovelSuggestionSerializer,
         permission_classes=[permissions.AllowAny],
         pagination_class=pagination.Max100LimitOffsetPagination,
         filter_backends=[],
@@ -141,16 +148,8 @@ class NovelViewSet(mixins.ChoiceListModelMixin, AuditableModelViewSet):
         since_week = timezone.now() - timezone.timedelta(days=7)
         since_month = timezone.now() - timezone.timedelta(days=30)
         queryset = (
-            super()
-            .get_queryset()
-            .exclude(status=models.NovelStatus.DRAFT)
+            self.get_queryset()
             .annotate(
-                read_count=Count("read_events"),
-                weekly_read_count=Count(
-                    "read_events",
-                    filter=Q(read_events__created_at__gte=since_week),
-                ),
-                is_bookmarked=Exists(models.Bookmark.objects.filter(user=request.user, novel_id=OuterRef("id"))),
                 recency_score=Case(
                     When(last_publication_at__gte=since_week, then=Value(SUGGESTION_RECENCY_RECENT_SCORE)),
                     When(last_publication_at__gte=since_month, then=Value(SUGGESTION_RECENCY_MONTH_SCORE)),

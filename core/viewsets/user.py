@@ -7,6 +7,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
 from .. import filters, mixins, models, pagination, permissions, serializers, throttling
+from . import novel
 
 
 class UserFilter(django_filters.FilterSet):
@@ -142,6 +143,32 @@ class UserViewSet(
         serializer.save(performed_by=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @extend_schema(responses=serializers.NovelListSerializer(many=True))
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="me/novels",
+        serializer_class=serializers.NovelListSerializer,
+        permission_classes=[permissions.IsAuthenticated],
+        pagination_class=pagination.Max100LimitOffsetPagination,
+        filterset_class=novel.NovelFilter,
+        search_fields = ["title", "blurb"],
+        ordering_fields=["created_at", "last_publication_at"],
+        ordering=["-last_publication_at"],
+    )
+    def list_novels(self, request, pk=None):
+        queryset = self.filter_queryset(
+            models.Novel.objects.select_related("author")
+            .prefetch_related("genres", "attachments__file")
+            .filter(author=request.user)
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
     @extend_schema(responses=serializers.UserReadingProgressSerializer(many=True))
     @action(
         detail=False,
@@ -181,7 +208,8 @@ class UserViewSet(
     )
     def list_bookmarks(self, request, pk=None):
         queryset = self.filter_queryset(
-            models.Bookmark.objects.prefetch_related("novel__genres", "novel__attachments__file")
+            models.Bookmark.objects.select_related("novel__author")
+            .prefetch_related("novel__genres", "novel__attachments__file")
             .filter(user=request.user)
             .exclude(novel__status=models.NovelStatus.DRAFT)
             .order_by("-created_at")
@@ -193,7 +221,7 @@ class UserViewSet(
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
-    @extend_schema()
+    @extend_schema(responses={201: serializers.UserBookmarkCreateSerializer})
     @list_bookmarks.mapping.post
     def create_bookmark(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -201,7 +229,9 @@ class UserViewSet(
         serializer.save(user=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @extend_schema(parameters=[OpenApiParameter(name="id", description="Bookmark ID", location=OpenApiParameter.PATH, type=int)])
+    @extend_schema(
+        parameters=[OpenApiParameter(name="id", description="Bookmark ID", location=OpenApiParameter.PATH, type=int)]
+    )
     @action(
         detail=False,
         methods=["delete"],
