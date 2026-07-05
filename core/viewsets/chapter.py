@@ -1,6 +1,6 @@
 import uuid
 
-from django.db.models import Q
+from django.db.models import BooleanField, Case, Exists, OuterRef, Q, Value, When
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -14,7 +14,7 @@ VIEWER_ID_COOKIE_MAX_AGE = models.NovelReadEvent.CREATE_RESTRICTED_SECONDS
 
 
 class NovelChapterViewSet(mixins.NestedViewSetMixin, mixins.ChoiceListModelMixin, AuditableModelViewSet):
-    queryset = models.Chapter.objects.select_related("novel__author").all()
+    queryset = models.Chapter.objects.select_related("novel__author").annotate(is_unlocked=Value(True)).all()
     permission_classes = [permissions.NovelChapterPermission]
     serializer_class = serializers.ChapterListSerializer
     ordering_fields = ["lexorank"]
@@ -41,11 +41,28 @@ class NovelChapterViewSet(mixins.NestedViewSetMixin, mixins.ChoiceListModelMixin
         user = self.request.user
         if user.has_perm("core.view_chapter"):
             return queryset
-        if user.is_authenticated:
-            return queryset.filter(
-                Q(novel__author=user) | (Q(is_published=True) & ~Q(novel__status=models.NovelStatus.DRAFT))
+        if not user.is_authenticated:
+            return (
+                queryset.annotate(
+                    is_unlocked=Case(
+                        When(price=0, then=Value(True)),
+                        default=Value(False),
+                    )
+                )
+                .exclude(novel__status=models.NovelStatus.DRAFT)
+                .filter(is_published=True)
             )
-        return queryset.exclude(novel__status=models.NovelStatus.DRAFT).filter(is_published=True)
+        queryset = queryset.annotate(
+            is_unlocked=Case(
+                When(price=0, then=Value(True)),
+                When(novel__author=user, then=Value(True)),
+                default=Exists(models.ChapterPurchase.objects.filter(user=user, chapter=OuterRef("pk"))),
+                output_field=BooleanField(),
+            )
+        )
+        return queryset.filter(
+            Q(novel__author=user) | (Q(is_published=True) & ~Q(novel__status=models.NovelStatus.DRAFT))
+        )
 
     def perform_create(self, serializer):
         serializer.save(novel_id=serializer.context["novel_id"], performed_by=self.request.user)

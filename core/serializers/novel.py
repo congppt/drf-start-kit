@@ -30,7 +30,6 @@ class NovelListSerializer(ExcludeDeleteModelSerializer):
     class Meta:
         model = models.Novel
         exclude = []
-        read_only_fields = ["slug"]
 
     def get_cover_url(self, obj: models.Novel) -> str | None:
         file_asset: models.FileAsset | None = None

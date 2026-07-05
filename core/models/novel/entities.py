@@ -2,8 +2,9 @@ from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from ..common import AuditableModel, FileAttachment
+from .. import common
 from ..user import User
+from ..wallet import WalletLedgerEntry
 from .enums import NovelStatus
 
 
@@ -15,7 +16,7 @@ class Genre(models.Model):
         return self.label
 
 
-class Novel(AuditableModel):
+class Novel(common.AuditableModel):
     title = models.CharField(max_length=80)
     slug = models.SlugField(unique=True, max_length=100)
     blurb = models.TextField()
@@ -23,7 +24,8 @@ class Novel(AuditableModel):
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="novels")
     status = models.CharField(choices=NovelStatus.choices, default=NovelStatus.DRAFT, db_index=True)
     last_publication_at = models.DateTimeField(null=True, db_index=True)
-    attachments = GenericRelation(FileAttachment)
+    attachments = GenericRelation(common.FileAttachment)
+    default_chapter_price = models.PositiveIntegerField(default=0)
 
     COVER_FIELD_NAME = "cover"
 
@@ -31,19 +33,30 @@ class Novel(AuditableModel):
         return self.title
 
 
-class Chapter(AuditableModel):
+class Chapter(common.AuditableModel):
     novel = models.ForeignKey(Novel, on_delete=models.CASCADE, related_name="chapters")
     lexorank = models.CharField(max_length=20, db_index=True)
     title = models.CharField(max_length=80)
     content = models.TextField()
     is_published = models.BooleanField(default=False)
     published_at = models.DateTimeField(null=True)
+    price = models.PositiveIntegerField()
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["novel", "lexorank"], name="uq_novel_lexorank")]
 
     def __str__(self):
         return self.title
+
+
+class ChapterPurchase(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="chapter_purchases")
+    chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE, related_name="purchases")
+    ledger = models.OneToOneField(WalletLedgerEntry, on_delete=models.CASCADE, related_name="chapter_purchase")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["user", "chapter"], name="uq_chapterpurchase_user_chapter")]
 
 
 class ReadingProgress(models.Model):

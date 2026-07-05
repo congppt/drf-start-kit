@@ -10,6 +10,8 @@ from .common import ExcludeDeleteModelSerializer
 
 
 class ChapterListSerializer(ExcludeDeleteModelSerializer):
+    is_unlocked = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = models.Chapter
         exclude = ["content", "lexorank"]
@@ -18,6 +20,7 @@ class ChapterListSerializer(ExcludeDeleteModelSerializer):
 class ChapterDetailSerializer(ExcludeDeleteModelSerializer):
     previous = serializers.SerializerMethodField()
     next = serializers.SerializerMethodField()
+    content = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Chapter
@@ -46,6 +49,11 @@ class ChapterDetailSerializer(ExcludeDeleteModelSerializer):
             .first()
         )
         return pk
+
+    def get_content(self, obj) -> str:
+        if getattr(obj, "is_unlocked", False):
+            return obj.content
+        return None
 
 
 class ChapterInputSerializer(ExcludeDeleteModelSerializer):
