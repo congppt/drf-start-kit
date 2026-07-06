@@ -4,4 +4,4 @@ from django.db.models import Choices
 from .common import FileAsset, FileAttachment, LogEntry, LogLevel, UploadStatus
 from .novel import Bookmark, Chapter, ChapterPurchase, Genre, Novel, NovelReadEvent, NovelStatus, ReadingProgress
 from .user import User
-from .wallet import Wallet, WalletLedgerEntry
+from .wallet import Wallet, WalletLedgerEntry, WalletLedgerEntryType

@@ -2,6 +2,7 @@ from rest_framework.serializers import ModelSerializer, Serializer
 
 from .bookmark import UserBookmarkCreateSerializer, UserBookmarkSerializer
 from .chapter import ChapterDetailSerializer, ChapterInputSerializer, ChapterListSerializer
+from .chapter_purchase import ChapterPurchaseInputSerializer
 from .common import (
     AuditableModelSerializer,
     ChoiceLimitOffsetSerializer,

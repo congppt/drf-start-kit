@@ -1,6 +1,7 @@
 import uuid
 
 from django.db.models import BooleanField, Case, Exists, OuterRef, Q, Value, When
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -66,6 +67,21 @@ class NovelChapterViewSet(mixins.NestedViewSetMixin, mixins.ChoiceListModelMixin
 
     def perform_create(self, serializer):
         serializer.save(novel_id=serializer.context["novel_id"], performed_by=self.request.user)
+
+    @extend_schema(responses={201: None, 204: None})
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="purchases",
+        serializer_class=serializers.ChapterPurchaseInputSerializer,
+        permission_classes=[permissions.IsAuthenticated],
+    )
+    def purchases(self, request, novel_id=None, pk=None):
+        serializer = self.get_serializer(data={"chapter": self.get_object().pk})
+        serializer.is_valid(raise_exception=True)
+        created = serializer.save()
+        response_status = status.HTTP_201_CREATED if created else status.HTTP_204_NO_CONTENT
+        return Response(status=response_status)
 
     @action(
         detail=True,

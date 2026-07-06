@@ -151,17 +151,14 @@ class UserViewSet(
         serializer_class=serializers.NovelListSerializer,
         permission_classes=[permissions.IsAuthenticated],
         pagination_class=pagination.Max100LimitOffsetPagination,
+        queryset=models.Novel.objects.select_related("author").prefetch_related("genres", "attachments__file").all(),
         filterset_class=novel.NovelFilter,
-        search_fields = ["title", "blurb"],
+        search_fields=["title", "blurb"],
         ordering_fields=["created_at", "last_publication_at"],
         ordering=["-last_publication_at"],
     )
     def list_novels(self, request, pk=None):
-        queryset = self.filter_queryset(
-            models.Novel.objects.select_related("author")
-            .prefetch_related("genres", "attachments__file")
-            .filter(author=request.user)
-        )
+        queryset = self.filter_queryset(self.get_queryset().filter(author=request.user))
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)

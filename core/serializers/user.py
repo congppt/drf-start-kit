@@ -66,6 +66,7 @@ class UserCreateSerializer(ExcludeDeleteModelSerializer):
         with transaction.atomic():
             user = models.User.objects.create_user(**validated_data)
             user.groups.set(groups)
+            models.Wallet.objects.create(user=user)
         return user
 
 

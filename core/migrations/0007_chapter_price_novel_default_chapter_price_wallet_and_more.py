@@ -6,55 +6,97 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0006_bookmark_remove_readingprogress_uq_user_novel_and_more'),
+        ("core", "0006_bookmark_remove_readingprogress_uq_user_novel_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='chapter',
-            name='price',
+            model_name="chapter",
+            name="price",
             field=models.PositiveIntegerField(default=0),
             preserve_default=False,
         ),
         migrations.AddField(
-            model_name='novel',
-            name='default_chapter_price',
+            model_name="novel",
+            name="default_chapter_price",
             field=models.PositiveIntegerField(default=0),
         ),
         migrations.CreateModel(
-            name='Wallet',
+            name="Wallet",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('balance', models.PositiveBigIntegerField(default=0)),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='wallet', to=settings.AUTH_USER_MODEL)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("balance", models.PositiveBigIntegerField(default=0)),
+                (
+                    "user",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="wallet", to=settings.AUTH_USER_MODEL
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='WalletLedgerEntry',
+            name="WalletLedgerEntry",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('amount', models.IntegerField()),
-                ('balance_after', models.PositiveBigIntegerField()),
-                ('type', models.CharField(choices=[('reward', 'Reward'), ('chapter_purchase', 'Chapter Purchase'), ('admin_adjustment', 'Admin Adjustment'), ('top_up', 'Top Up')], db_index=True, max_length=20)),
-                ('idempotency_key', models.CharField(max_length=128, unique=True)),
-                ('note', models.TextField(null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('wallet', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='ledger_entries', to='core.wallet')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("amount", models.IntegerField()),
+                ("balance_after", models.PositiveBigIntegerField()),
+                (
+                    "type",
+                    models.CharField(
+                        choices=[
+                            ("reward", "Reward"),
+                            ("chapter_purchase", "Chapter Purchase"),
+                            ("admin_adjustment", "Admin Adjustment"),
+                            ("top_up", "Top Up"),
+                        ],
+                        db_index=True,
+                        max_length=20,
+                    ),
+                ),
+                ("idempotency_key", models.CharField(max_length=128, unique=True)),
+                ("note", models.TextField(null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                (
+                    "wallet",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="ledger_entries", to="core.wallet"
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='ChapterPurchase',
+            name="ChapterPurchase",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('chapter', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='purchases', to='core.chapter')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='chapter_purchases', to=settings.AUTH_USER_MODEL)),
-                ('ledger', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='chapter_purchase', to='core.walletledgerentry')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                (
+                    "chapter",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="purchases", to="core.chapter"
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="chapter_purchases",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "ledger",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="chapter_purchase",
+                        to="core.walletledgerentry",
+                    ),
+                ),
             ],
             options={
-                'constraints': [models.UniqueConstraint(fields=('user', 'chapter'), name='uq_chapterpurchase_user_chapter')],
+                "constraints": [
+                    models.UniqueConstraint(fields=("user", "chapter"), name="uq_chapterpurchase_user_chapter")
+                ],
             },
         ),
     ]
