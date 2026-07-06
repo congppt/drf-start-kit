@@ -26,7 +26,10 @@ class ChapterPurchaseInputSerializer(serializers.ModelSerializer):
         if chapter.novel.author_id == user.pk:
             raise serializers.ValidationError({"chapter": _("Authors cannot purchase their own chapters.")})
 
-        wallet, _ = models.Wallet.objects.get(user=user)
+        try:
+            wallet = models.Wallet.objects.get(user=user)
+        except models.Wallet.DoesNotExist:
+            raise serializers.ValidationError(_("Wallet not found."))
         if wallet.balance < chapter.price:
             raise serializers.ValidationError(_("Insufficient balance."))
 
@@ -40,3 +43,5 @@ class ChapterPurchaseInputSerializer(serializers.ModelSerializer):
             ).created
         except services.wallet.InsufficientBalanceError:
             raise serializers.ValidationError(_("Insufficient balance."))
+        except services.wallet.WalletNotFoundError:
+            raise serializers.ValidationError(_("Wallet not found."))

@@ -11,6 +11,9 @@ class WalletLedgerEntryType(models.TextChoices):
     def idempotency_key_format(self) -> str | None:
         return {
             WalletLedgerEntryType.CHAPTER_PURCHASE: "{ledger_type}:{user_id}:{chapter_id}",
+            WalletLedgerEntryType.ADMIN_ADJUSTMENT: (
+                "{ledger_type}:{timestamp}:{sender_user_id}:{recipient_user_id}"
+            ),
         }.get(self)
 
     def idempotency_key(self, **kwargs) -> str:

@@ -143,6 +143,22 @@ class UserViewSet(
         serializer.save(performed_by=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @extend_schema(responses={201: None, 204: None})
+    @action(
+        detail=True,
+        methods=["put"],
+        url_path="wallet",
+        serializer_class=serializers.WalletCreditInputSerializer,
+        permission_classes=[permissions.factory.permissions_class("core.change_wallet")],
+    )
+    def credit_wallet(self, request, pk=None):
+        recipient = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        created = serializer.save(recipient=recipient)
+        response_status = status.HTTP_201_CREATED if created else status.HTTP_204_NO_CONTENT
+        return Response(status=response_status)
+
     @extend_schema(responses=serializers.NovelListSerializer(many=True))
     @action(
         detail=False,

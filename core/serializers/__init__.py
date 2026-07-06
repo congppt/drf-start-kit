@@ -40,3 +40,4 @@ from .user import (
     UserSerializer,
     UserUpdateSerializer,
 )
+from .wallet import WalletCreditInputSerializer

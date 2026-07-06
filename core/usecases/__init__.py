@@ -14,4 +14,4 @@ Call flow when used:
   viewset/serializer -> usecase -> service -> model
 """
 
-from . import chapter
+from . import chapter, wallet
