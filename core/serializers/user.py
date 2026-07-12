@@ -9,7 +9,7 @@ from .. import constants, models, validators
 from .common import (
     ChoiceSerializer,
     ExcludeDeleteModelSerializer,
-    FileAttachmentSerializer,
+    FileAttachmentInputSerializer,
     FilePresignedUploadUrlSerializer,
 )
 from .permission import PermissionSerializer
@@ -130,7 +130,7 @@ class UserAvatarUploadUrlSerializer(FilePresignedUploadUrlSerializer):
     is_public = AVATAR_IS_PUBLIC
 
 
-class UserAvatarSelfUpdateSerializer(FileAttachmentSerializer):
+class UserAvatarSelfUpdateSerializer(FileAttachmentInputSerializer):
     is_public = AVATAR_IS_PUBLIC
     attachment_field_name = AVATAR_FIELD_NAME
 

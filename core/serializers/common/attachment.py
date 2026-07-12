@@ -55,7 +55,7 @@ class FilePresignedUploadUrlSerializer(serializers.Serializer):
         }
 
 
-class FileAttachmentSerializer(serializers.Serializer):
+class FileAttachmentInputSerializer(serializers.Serializer):
     """
     Attach a previously uploaded ``FileAsset`` to a model instance.
 
@@ -86,3 +86,17 @@ class FileAttachmentSerializer(serializers.Serializer):
         if file_stat.content_type != value.content_type:
             raise serializers.ValidationError(_("This file type is not supported. Please upload another file."))
         return value
+
+
+class FileAssetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.FileAsset
+        fields = ["name", "content_type", "size", "owner", "created"]
+
+
+class FileAttachmentSerializer(serializers.ModelSerializer):
+    file = FileAssetSerializer()
+
+    class Meta:
+        model = models.FileAttachment
+        fields = ["id", "file"]
