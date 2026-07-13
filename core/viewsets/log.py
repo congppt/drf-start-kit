@@ -3,7 +3,7 @@ from rest_framework import permissions, viewsets
 from .. import filters, models, serializers
 
 
-class LogFilter(filters.DjangoFilterSet):
+class LogFilter(filters.FilterSet):
     from_date = filters.DateFilter(field_name="timestamp", lookup_expr="date__gte", required=True)
     to_date = filters.DateFilter(field_name="timestamp", lookup_expr="date__lte", required=True)
     min_level = filters.ChoiceFilter(field_name="level", lookup_expr="gte", choices=models.LogLevel.choices)

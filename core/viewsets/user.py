@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from .. import filters, mixins, models, pagination, permissions, serializers, throttling
 
 
-class UserFilter(filters.DjangoFilterSet):
+class UserFilter(filters.FilterSet):
     groups = filters.ModelMultipleChoiceFilter(queryset=models.Group.objects.all())
 
     class Meta:
