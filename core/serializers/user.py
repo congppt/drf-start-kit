@@ -122,7 +122,7 @@ class UserAvatarUploadUrlSerializer(common.FilePresignedUploadUrlSerializer):
     is_public = AVATAR_IS_PUBLIC
 
 
-class UserAvatarSelfUpdateSerializer(common.FileAttachmentSerializer):
+class UserAvatarSelfUpdateSerializer(common.FileAttachmentInputSerializer):
     is_public = AVATAR_IS_PUBLIC
     attachment_field_name = AVATAR_FIELD_NAME
 
