@@ -1,5 +1,3 @@
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import viewsets
 
 from .. import mixins, models, permissions, serializers
@@ -12,15 +10,4 @@ class PermissionViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     pagination_class = None
 
 
-@extend_schema(
-    parameters=[
-        OpenApiParameter(
-            name="group_id",
-            type=OpenApiTypes.INT,
-            location=OpenApiParameter.PATH,
-            description="Group ID",
-        ),
-    ],
-)
-class GroupPermissionViewSet(mixins.NestedViewSetMixin, PermissionViewSet):
-    pass
+

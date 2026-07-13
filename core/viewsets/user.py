@@ -1,14 +1,13 @@
-import django_filters
 from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .. import mixins, models, pagination, permissions, serializers, throttling
+from .. import filters, mixins, models, pagination, permissions, serializers, throttling
 
 
-class UserFilter(django_filters.FilterSet):
-    groups = django_filters.ModelMultipleChoiceFilter(queryset=models.Group.objects.all())
+class UserFilter(filters.DjangoFilterSet):
+    groups = filters.ModelMultipleChoiceFilter(queryset=models.Group.objects.all())
 
     class Meta:
         model = models.User

@@ -1,13 +1,12 @@
-import django_filters
 from rest_framework import permissions, viewsets
 
-from .. import models, serializers
+from .. import filters, models, serializers
 
 
-class LogFilter(django_filters.FilterSet):
-    from_date = django_filters.DateFilter(field_name="timestamp", lookup_expr="date__gte", required=True)
-    to_date = django_filters.DateFilter(field_name="timestamp", lookup_expr="date__lte", required=True)
-    min_level = django_filters.ChoiceFilter(field_name="level", lookup_expr="gte", choices=models.LogLevel.choices)
+class LogFilter(filters.DjangoFilterSet):
+    from_date = filters.DateFilter(field_name="timestamp", lookup_expr="date__gte", required=True)
+    to_date = filters.DateFilter(field_name="timestamp", lookup_expr="date__lte", required=True)
+    min_level = filters.ChoiceFilter(field_name="level", lookup_expr="gte", choices=models.LogLevel.choices)
 
     class Meta:
         model = models.LogEntry

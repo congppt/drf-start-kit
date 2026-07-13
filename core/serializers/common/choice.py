@@ -8,6 +8,7 @@ class ChoiceSerializer(serializers.Serializer):
     value = serializers.SerializerMethodField()
     label = serializers.SerializerMethodField()
     color = serializers.CharField(default=None)
+    group = serializers.CharField(default=None)
 
     def get_value(self, obj) -> int | str | UUID:
         if isinstance(obj, models.Model):

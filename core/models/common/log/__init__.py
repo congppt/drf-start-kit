@@ -1,2 +1,2 @@
-from .entity import LogEntry
-from .enums import LogLevel
+from .entity import *
+from .enums import *

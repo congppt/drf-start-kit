@@ -6,12 +6,8 @@ from rest_framework import serializers
 from integrations.minio import minio
 
 from .. import models, validators
-from .common import (
-    ChoiceSerializer,
-    ExcludeDeleteModelSerializer,
-    FileAttachmentSerializer,
-    FilePresignedUploadUrlSerializer,
-)
+from . import common
+from .common.audit import ExcludeDeleteModelSerializer
 from .permission import PermissionSerializer
 
 AVATAR_FIELD_NAME = models.User.AVATAR_FIELD_NAME
@@ -25,7 +21,7 @@ class UserPreferencesSerializer(serializers.Serializer):
 
 class UserSerializer(ExcludeDeleteModelSerializer):
     avatar_url = serializers.SerializerMethodField()
-    groups = ChoiceSerializer(many=True, read_only=True)
+    groups = common.ChoiceSerializer(many=True, read_only=True)
     preferences = UserPreferencesSerializer(required=False)
 
     class Meta:
@@ -46,7 +42,7 @@ class UserSerializer(ExcludeDeleteModelSerializer):
         return minio.presigned_download(file_asset.id, file_asset.name)
 
 
-class UserChoicesSerializer(ChoiceSerializer):
+class UserChoicesSerializer(common.ChoiceSerializer):
     value = serializers.PrimaryKeyRelatedField(queryset=models.User.objects.all(), source="pk")
 
 
@@ -120,13 +116,13 @@ class PasswordSelfChangeSerializer(PasswordChangeSerializer):
         return attrs
 
 
-class UserAvatarUploadUrlSerializer(FilePresignedUploadUrlSerializer):
+class UserAvatarUploadUrlSerializer(common.FilePresignedUploadUrlSerializer):
     file_name = serializers.CharField(write_only=True, validators=[validators.ImageFileNameValidator()])
 
     is_public = AVATAR_IS_PUBLIC
 
 
-class UserAvatarSelfUpdateSerializer(FileAttachmentSerializer):
+class UserAvatarSelfUpdateSerializer(common.FileAttachmentSerializer):
     is_public = AVATAR_IS_PUBLIC
     attachment_field_name = AVATAR_FIELD_NAME
 

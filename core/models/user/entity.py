@@ -3,10 +3,10 @@ from django.contrib.auth.models import UserManager as BaseUserManager
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 
-from .. import common
+from ..common import attachment, audit
 
 
-class _UserManager(common.AuditableManager, BaseUserManager):
+class _UserManager(audit.AuditableManager, BaseUserManager):
     def _create_user(self, username, email, password, **extra_fields):
         performed_by = extra_fields.pop("performed_by", None)
         user = self._create_user_object(username, email, password, **extra_fields)
@@ -32,11 +32,11 @@ class _UserManager(common.AuditableManager, BaseUserManager):
         return await super().acreate_superuser(username, email, password, **extra_fields)
 
 
-class User(common.AuditableModel, AbstractUser):
+class User(audit.AuditableModel, AbstractUser):
     objects = _UserManager()
 
     preferences = models.JSONField(default=dict)
-    attachments = GenericRelation(common.FileAttachment)
+    attachments = GenericRelation(attachment.FileAttachment)
 
     class Meta(AbstractUser.Meta):
         swappable = "AUTH_USER_MODEL"

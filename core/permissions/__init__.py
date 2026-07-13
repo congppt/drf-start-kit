@@ -1,3 +1,9 @@
-from rest_framework.permissions import DjangoModelPermissions, IsAdminUser, IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import (
+    AllowAny,
+    DjangoModelPermissions,
+    IsAdminUser,
+    IsAuthenticated,
+    IsAuthenticatedOrReadOnly,
+)
 
 from . import factory
