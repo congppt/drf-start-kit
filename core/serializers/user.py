@@ -21,7 +21,7 @@ class UserPreferencesSerializer(serializers.Serializer):
 
 class UserSerializer(ExcludeDeleteModelSerializer):
     avatar_url = serializers.SerializerMethodField()
-    groups = common.ChoiceSerializer(many=True, read_only=True)
+    groups = common.BaseChoiceSerializer(many=True, read_only=True)
     preferences = UserPreferencesSerializer(required=False)
 
     class Meta:
@@ -42,7 +42,7 @@ class UserSerializer(ExcludeDeleteModelSerializer):
         return minio.presigned_download(file_asset.id, file_asset.name)
 
 
-class UserChoicesSerializer(common.ChoiceSerializer):
+class UserChoicesSerializer(common.BaseChoiceSerializer):
     value = serializers.PrimaryKeyRelatedField(queryset=models.User.objects.all(), source="pk")
 
 
