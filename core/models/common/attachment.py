@@ -3,8 +3,12 @@ import uuid
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
-from .enums import UploadStatus
+
+class UploadStatus(models.TextChoices):
+    PENDING = "pending", _("Pending")
+    READY = "ready", _("Ready")
 
 
 class FileAsset(models.Model):
