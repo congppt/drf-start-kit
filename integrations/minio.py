@@ -1,8 +1,7 @@
 import mimetypes
-import os
 from datetime import timedelta
 from typing import Iterable
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 from uuid import UUID
 
 import certifi
@@ -17,27 +16,48 @@ from minio.deleteobjects import DeleteObject
 class MinioClient:
     def __init__(self):
         self.__client: Minio | None = None
+        self.__presign_client: Minio | None = None
+
+    def __build_client(self, *, endpoint: str, secure: bool) -> Minio:
+        connect_timeout = timedelta(seconds=10).seconds
+        read_timeout = timedelta(minutes=5).seconds
+        http_client = urllib3.PoolManager(
+            timeout=urllib3.Timeout(connect=connect_timeout, read=read_timeout),
+            maxsize=10,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=getattr(env, "SSL_CERT_FILE", certifi.where()),
+            retries=urllib3.Retry(total=5, backoff_factor=0.2, status_forcelist=[500, 502, 503, 504]),
+        )
+        return Minio(
+            endpoint=endpoint,
+            access_key=self.__get_config("MINIO_ACCESS_KEY"),
+            secret_key=self.__get_config("MINIO_SECRET_KEY"),
+            http_client=http_client,
+            secure=secure,
+        )
 
     @property
     def client(self) -> Minio:
+        """Internal client for upload/download/stat/delete against MINIO_ENDPOINT."""
         if self.__client is None:
-            connect_timeout = timedelta(seconds=10).seconds
-            read_timeout = timedelta(minutes=5).seconds
-            http_client = urllib3.PoolManager(
-                timeout=urllib3.Timeout(connect=connect_timeout, read=read_timeout),
-                maxsize=10,
-                cert_reqs="CERT_REQUIRED",
-                ca_certs=getattr(env, "SSL_CERT_FILE", certifi.where()),
-                retries=urllib3.Retry(total=5, backoff_factor=0.2, status_forcelist=[500, 502, 503, 504]),
-            )
-            self.__client = Minio(
+            self.__client = self.__build_client(
                 endpoint=self.__get_config("MINIO_ENDPOINT"),
-                access_key=self.__get_config("MINIO_ACCESS_KEY"),
-                secret_key=self.__get_config("MINIO_SECRET_KEY"),
-                http_client=http_client,
                 secure=env.MINIO_SECURE,
             )
         return self.__client
+
+    @property
+    def presign_client(self) -> Minio:
+        """
+        Public-facing client used only to mint URLs browsers can open.
+
+        Endpoint/secure are taken from MINIO_PUBLIC_URL so signatures match the
+        host clients actually call (which may differ from the internal endpoint).
+        """
+        if self.__presign_client is None:
+            endpoint, secure = self.__get_public_endpoint()
+            self.__presign_client = self.__build_client(endpoint=endpoint, secure=secure)
+        return self.__presign_client
 
     def __get_config(self, name: str) -> str:
         resolved = getattr(env, name, None)
@@ -52,6 +72,12 @@ class MinioClient:
 
     def __get_public_url(self) -> str:
         return self.__get_config("MINIO_PUBLIC_URL").rstrip("/")
+
+    def __get_public_endpoint(self) -> tuple[str, bool]:
+        parsed = urlparse(self.__get_public_url())
+        if not parsed.netloc:
+            raise EnvironmentError("MINIO_PUBLIC_URL must include a host, e.g. http://localhost:9000")
+        return parsed.netloc, parsed.scheme == "https"
 
     def __get_content_type(self, name: str) -> str:
         content_type, _ = mimetypes.guess_type(name)
@@ -87,7 +113,7 @@ class MinioClient:
         expires: timedelta,
         is_public: bool = False,
     ) -> str:
-        return self.client.presigned_put_object(
+        return self.presign_client.presigned_put_object(
             bucket_name=self.__get_bucket(is_public),
             object_name=str(object_uid),
             expires=expires,
@@ -100,7 +126,7 @@ class MinioClient:
         expires: timedelta = timedelta(minutes=10),
     ) -> str:
         quoted_name = quote(name)
-        return self.client.presigned_get_object(
+        return self.presign_client.presigned_get_object(
             bucket_name=self.__get_bucket(is_public=False),
             object_name=str(object_uid),
             expires=expires,
@@ -111,10 +137,10 @@ class MinioClient:
         )
 
     def delete(self, object_uids: Iterable[UUID], is_public: bool = False):
-        errors = self.client.remove_objects(
-            self.__get_bucket(is_public),
-            [DeleteObject(str(object_uid)) for object_uid in object_uids],
-        )
+        objects = [DeleteObject(str(object_uid)) for object_uid in object_uids]
+        if not objects:
+            return []
+        errors = self.client.remove_objects(self.__get_bucket(is_public), objects)
         return list(errors)
 
 
