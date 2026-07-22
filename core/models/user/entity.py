@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import UserManager as BaseUserManager
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
+from django.db.models.functions import Lower
 
 from ..common import attachment, audit
 
@@ -40,6 +41,13 @@ class User(audit.AuditableModel, AbstractUser):
 
     class Meta(AbstractUser.Meta):
         swappable = "AUTH_USER_MODEL"
+        constraints = [
+            models.UniqueConstraint(
+                Lower("email"),
+                condition=~models.Q(email=""),
+                name="uq_user_email_ci_when_set",
+            ),
+        ]
 
     def __str__(self) -> str:
         full_name = self.get_full_name()

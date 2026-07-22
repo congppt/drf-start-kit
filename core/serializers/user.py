@@ -42,32 +42,23 @@ class UserSerializer(ExcludeDeleteModelSerializer):
         return minio.presigned_download(file_asset.id, file_asset.name)
 
 
-class UserChoicesSerializer(common.BaseChoiceSerializer):
-    value = serializers.PrimaryKeyRelatedField(queryset=models.User.objects.all(), source="pk")
-
-
-class UserCreateSerializer(UserSerializer):
-    password = serializers.CharField(validators=[password_validation.validate_password])
+class UserUpdateSerializer(serializers.ModelSerializer):
     groups = serializers.PrimaryKeyRelatedField(many=True, queryset=models.Group.objects.all())
-
-    class Meta:
-        model = models.User
-        exclude = ["user_permissions", "last_login", "date_joined"]
-
-    def create(self, validated_data: dict):
-        groups = validated_data.pop("groups")
-        with transaction.atomic():
-            user = models.User.objects.create_user(**validated_data)
-            user.groups.set(groups)
-        return user
-
-
-class UserUpdateSerializer(UserSerializer):
-    groups = serializers.PrimaryKeyRelatedField(many=True, queryset=models.Group.objects.all())
+    preferences = UserPreferencesSerializer(required=False)
 
     class Meta:
         model = models.User
         exclude = ["username", "password", "last_login", "date_joined", "user_permissions"]
+    
+    def validate_email(self, value: str):
+        if not value:
+            return value
+        qs = models.User.all_objects.filter(email__iexact=value)
+        if self.instance is not None:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError(_("A user with that email already exists."))
+        return value
 
     def update(self, instance: models.User, validated_data: dict):
         performed_by = validated_data.pop("performed_by")
@@ -79,6 +70,20 @@ class UserUpdateSerializer(UserSerializer):
             if groups is not None:
                 instance.groups.set(groups)
         return instance
+
+class UserCreateSerializer(UserUpdateSerializer):
+    password = serializers.CharField(validators=[password_validation.validate_password])
+
+    class Meta:
+        model = models.User
+        exclude = ["user_permissions", "last_login", "date_joined"]
+
+    def create(self, validated_data: dict):
+        groups = validated_data.pop("groups")
+        with transaction.atomic():
+            user = models.User.objects.create_user(**validated_data)
+            user.groups.set(groups)
+        return user
 
 
 class UserSelfUpdateSerializer(UserUpdateSerializer):

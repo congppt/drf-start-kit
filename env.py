@@ -63,3 +63,12 @@ DB_POOL_MIN_SIZE = 1
 DB_POOL_MAX_SIZE = 4
 
 LOG_RETENTION = int(os.getenv("LOG_RETENTION", "60"))
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+
+EMAIL_HOST = os.getenv("EMAIL__HOST", "")
+EMAIL_PORT = int(os.getenv("EMAIL__PORT", "587"))
+EMAIL_HOST_USER = os.getenv("EMAIL__HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL__HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL__USE_TLS", "true").lower() in {"1", "true", "yes"}
+EMAIL_FROM = os.getenv("EMAIL__FROM", "noreply@example.com")

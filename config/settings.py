@@ -225,6 +225,7 @@ SIMPLE_JWT = {
 }
 
 AUTH_USER_MODEL = "core.User"
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24  # 24 hours (Django setting used by token generator)
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -281,3 +282,19 @@ STATIC_URL = "static/"
 FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20MB
 
 FILE_ORPHANED_INTERVAL = 60 * 10  # 10 minutes
+
+# Email — console backend in LOCAL when EMAIL__HOST is unset; SMTP otherwise.
+EMAIL_BACKEND = (
+    "django.core.mail.backends.console.EmailBackend"
+    if env.IS_LOCAL and not env.EMAIL_HOST
+    else "django.core.mail.backends.smtp.EmailBackend"
+)
+EMAIL_HOST = env.EMAIL_HOST
+EMAIL_PORT = env.EMAIL_PORT
+EMAIL_HOST_USER = env.EMAIL_HOST_USER
+EMAIL_HOST_PASSWORD = env.EMAIL_HOST_PASSWORD
+EMAIL_USE_TLS = env.EMAIL_USE_TLS
+DEFAULT_FROM_EMAIL = env.EMAIL_FROM
+
+FRONTEND_URL = env.FRONTEND_URL
+

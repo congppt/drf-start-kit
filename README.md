@@ -10,6 +10,8 @@ A starter kit for building APIs with Django REST Framework. It provides a ready-
 | JWT obtain | `POST /api/token/` |
 | JWT refresh | `POST /api/token/refresh/` |
 | JWT logout | `POST /api/token/logout/` |
+| Password reset request | `POST /api/password-reset/` |
+| Password reset confirm | `POST /api/password-reset/confirm/` |
 | Current user permissions | `GET /api/users/me/permissions/` |
 | Choice metadata | `GET /api/meta/choices/{key}/` |
 
@@ -109,6 +111,13 @@ Settings are loaded from environment variables via `env.py` (uses `python-dotenv
 | `MINIO__PRIVATE_BUCKET` | for file features | Private bucket name |
 | `MINIO__PUBLIC_URL` | no | Public base URL; defaults to `http(s)://{MINIO__ENDPOINT}` from `MINIO__SECURE` |
 | `MINIO__SECURE` | no | Use HTTPS for MinIO client (`true`/`false`, default `false`) |
+| `FRONTEND_URL` | no | Front-end origin used in password-reset email links (default `http://localhost:3000`) |
+| `EMAIL__HOST` | for SMTP | SMTP host; when empty in `LOCAL`, emails go to the console backend |
+| `EMAIL__PORT` | no | SMTP port (default `587`) |
+| `EMAIL__HOST_USER` | no | SMTP username |
+| `EMAIL__HOST_PASSWORD` | no | SMTP password |
+| `EMAIL__USE_TLS` | no | Enable STARTTLS (default `true`) |
+| `EMAIL__FROM` | no | From address for app mail via `DEFAULT_FROM_EMAIL` (default `noreply@example.com`) |
 | `ALLOWED_HOSTS` | STAGING, PRODUCTION | Comma-separated hosts |
 | `ALLOWED_ORIGINS` | STAGING, PRODUCTION | Comma-separated CORS origins (see note below) |
 | `LANGUAGE_CODE` | no | Default API language when no request preference matches; defaults to `vi` |
@@ -879,6 +888,17 @@ JWT auth uses `rest_framework_simplejwt` with token blacklist support. Token obt
 
 **Logout** — `POST /api/token/logout/` with `{ "refresh": "..." }` to blacklist the refresh token.
 
+**Password reset (email example)** — throttled to `5/minute` per IP:
+
+1. `POST /api/password-reset/` with `{ "email": "user@example.com" }` returns `204` when an active account with a usable password matches that email; otherwise `400`. A Huey task emails a front-end link built from `FRONTEND_URL` (`/reset-password?uid=...&token=...`). Token lifetime follows Django's `PASSWORD_RESET_TIMEOUT` (24 hours in this kit).
+2. Front end calls `POST /api/password-reset/confirm/` with:
+
+```json
+{ "uid": "...", "token": "...", "newPassword": "..." }
+```
+
+On success (`204`), the password is updated and outstanding JWT refresh tokens for that user are blacklisted. In `LOCAL` with no `EMAIL__HOST`, Django logs the HTML message to the console instead of SMTP.
+
 Self-service password change (`PUT /api/users/me/password/`) and avatar presigned upload (`POST /api/users/me/avatar/presigned-upload-url/`) are throttled to `10/minute` per authenticated user.
 
 Token payload claims are camelized to match API JSON (`core/serializers/auth.py`). Send the access token on protected requests:
@@ -925,11 +945,17 @@ Django cache is dummy cache when `DEBUG` is on (`ENV=LOCAL`) and Redis when `DEB
 
 Cache keys are stable across equivalent positional and keyword calls by binding arguments to the function signature before hashing.
 
+### Email
+
+`integrations.email.send_templated_email` renders Django HTML templates and sends through the configured backend. Password reset is the reference flow: request endpoint → Huey task → `core/templates/email/password_reset_body.html`.
+
 ### Background tasks
 
 Huey is configured in `config.settings`; tasks live in `core/tasks`. Consumer worker count is set by `HUEY_WORKERS` (default `6`) in `HUEY["consumer"]["workers"]`.
 
-The `minio_garbage_collect` task runs daily at midnight and deletes orphaned pending `FileAsset` records and their MinIO objects after `FILE_ORPHANED_INTERVAL`.
+The `send_password_reset_email` task delivers password-reset messages through `integrations.email` (console in local when SMTP is unset, otherwise SMTP).
+
+The `minio_garbage_collect` task runs daily at midnight and deletes orphaned unattached `FileAsset` records and their MinIO objects after `FILE_ORPHANED_INTERVAL`.
 
 The `flush_expired_tokens` task runs daily at 03:30 UTC and deletes expired rows from the JWT blacklist `OutstandingToken` table (same effect as `python manage.py flushexpiredtokens`).
 

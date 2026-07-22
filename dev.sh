@@ -58,6 +58,7 @@ DB_URL=postgresql://postgres:postgres@localhost:5432/postgres
 SECRET_KEY=$(generate_secret_key)
 REDIS_URL=redis://localhost:6379
 LANGUAGE_CODE=vi
+FRONTEND_URL=http://localhost:3000
 MINIO__ENDPOINT=localhost:9000
 MINIO__ACCESS_KEY=minioadmin
 MINIO__SECRET_KEY=minioadmin
