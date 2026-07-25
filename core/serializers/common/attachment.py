@@ -1,4 +1,5 @@
 import mimetypes
+from collections.abc import Sequence
 
 from django.conf import settings
 from django.utils import timezone
@@ -8,6 +9,67 @@ from rest_framework import serializers
 from integrations.minio import minio
 
 from ... import models, validators
+
+
+class FileAttachmentInputSerializer(serializers.Serializer):
+    """
+    Attach a previously uploaded ``FileAsset`` to a model instance.
+
+    Validates ownership, MinIO object presence, and optional field binding.
+    """
+
+    file = serializers.PrimaryKeyRelatedField(queryset=models.FileAsset.objects.all(), write_only=True)
+
+    attachment_field_name: str | None = None
+    is_public = False
+
+    def validate_file(self, value: models.FileAsset):
+        request = self.context["request"]
+        if value.owner != request.user.username:
+            raise serializers.ValidationError(_("Please choose a file that you uploaded."))
+        assert self.attachment_field_name
+        attachment: models.FileAttachment = value.attachments.select_related("content_type").first()
+        if attachment and (
+            attachment.content_object != self.instance or attachment.field_name != self.attachment_field_name
+        ):
+            raise serializers.ValidationError(_("This file is already attached to another record."))
+
+        file_stat = minio.stat(value.id, is_public=self.is_public)
+        if not file_stat:
+            raise serializers.ValidationError(_("We could not find the uploaded file."))
+        if file_stat.size != value.size:
+            raise serializers.ValidationError(_("The uploaded file is invalid. Please upload it again."))
+        if file_stat.content_type != value.content_type:
+            raise serializers.ValidationError(_("This file type is not supported. Please upload another file."))
+        return value
+
+
+class FileAttachmentUpdateSerializerMixin:
+    def validate_attachment_file(
+        self,
+        value: models.FileAsset,
+        field_name: str,
+        is_public: bool = False,
+    ) -> models.FileAsset:
+        serializer = FileAttachmentInputSerializer(instance=self.instance, context=self.context)
+        serializer.attachment_field_name = field_name
+        serializer.is_public = is_public
+        return serializer.validate_file(value)
+
+    def link_attachment(
+        self,
+        instance: models.FileAttachmentMixin,
+        field_name: str,
+        unique: bool,
+        files: Sequence[models.FileAsset],
+    ) -> None:
+        if unique:
+            assert len(files) == 1
+            instance.attachments.filter(field_name=field_name).delete()
+        for file in files:
+            instance.attachments.create(file=file, field_name=field_name)
+            file.status = models.UploadStatus.READY
+            file.save()
 
 
 class FilePresignedUploadUrlSerializer(serializers.Serializer):
@@ -53,39 +115,6 @@ class FilePresignedUploadUrlSerializer(serializers.Serializer):
             "upload_url": url,
             "expires_at": timezone.now() + timezone.timedelta(seconds=self.upload_ttl_seconds),
         }
-
-
-class FileAttachmentInputSerializer(serializers.Serializer):
-    """
-    Attach a previously uploaded ``FileAsset`` to a model instance.
-
-    Validates ownership, MinIO object presence, and optional field binding.
-    """
-
-    file = serializers.PrimaryKeyRelatedField(queryset=models.FileAsset.objects.all(), write_only=True)
-
-    attachment_field_name: str | None = None
-    is_public = False
-
-    def validate_file(self, value: models.FileAsset):
-        request = self.context["request"]
-        if value.owner != request.user.username:
-            raise serializers.ValidationError(_("Please choose a file that you uploaded."))
-        assert self.attachment_field_name
-        attachment: models.FileAttachment = value.attachments.select_related("content_type").first()
-        if attachment and (
-            attachment.content_object != self.instance or attachment.field_name != self.attachment_field_name
-        ):
-            raise serializers.ValidationError(_("This file is already attached to another record."))
-
-        file_stat = minio.stat(value.id, is_public=self.is_public)
-        if not file_stat:
-            raise serializers.ValidationError(_("We could not find the uploaded file."))
-        if file_stat.size != value.size:
-            raise serializers.ValidationError(_("The uploaded file is invalid. Please upload it again."))
-        if file_stat.content_type != value.content_type:
-            raise serializers.ValidationError(_("This file type is not supported. Please upload another file."))
-        return value
 
 
 class FileAssetSerializer(serializers.ModelSerializer):

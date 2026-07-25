@@ -86,10 +86,36 @@ class UserCreateSerializer(UserUpdateSerializer):
         return user
 
 
-class UserSelfUpdateSerializer(UserUpdateSerializer):
+class UserSelfUpdateSerializer(common.FileAttachmentUpdateSerializerMixin, UserUpdateSerializer):
+    avatar = serializers.PrimaryKeyRelatedField(
+        queryset=models.FileAsset.objects.all(),
+        write_only=True,
+        required=False,
+    )
+
     class Meta:
         model = models.User
-        fields = ["first_name", "last_name", "email", "preferences"]
+        fields = ["first_name", "last_name", "email", "preferences", "avatar"]
+
+    def validate_avatar(self, value: models.FileAsset):
+        return self.validate_attachment_file(
+            value,
+            field_name=AVATAR_FIELD_NAME,
+            is_public=AVATAR_IS_PUBLIC,
+        )
+
+    def update(self, instance: models.User, validated_data: dict):
+        avatar = validated_data.pop("avatar", None)
+        with transaction.atomic():
+            instance = super().update(instance, validated_data)
+            if avatar is not None:
+                self.link_attachment(
+                    instance,
+                    field_name=AVATAR_FIELD_NAME,
+                    unique=True,
+                    files=[avatar],
+                )
+        return instance
 
 
 class UserSelfSerializer(serializers.Serializer):
@@ -125,17 +151,3 @@ class UserAvatarUploadUrlSerializer(common.FilePresignedUploadUrlSerializer):
     file_name = serializers.CharField(write_only=True, validators=[validators.ImageFileNameValidator()])
 
     is_public = AVATAR_IS_PUBLIC
-
-
-class UserAvatarSelfUpdateSerializer(common.FileAttachmentInputSerializer):
-    is_public = AVATAR_IS_PUBLIC
-    attachment_field_name = AVATAR_FIELD_NAME
-
-    def update(self, instance: models.User, validated_data: dict):
-        file = validated_data["file"]
-        with transaction.atomic():
-            instance.attachments.filter(field_name=self.attachment_field_name).delete()
-            instance.attachments.create(file=file, field_name=self.attachment_field_name)
-            file.status = models.UploadStatus.READY
-            file.save()
-        return instance

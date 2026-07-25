@@ -117,17 +117,3 @@ class UserViewSet(
         serializer.is_valid(raise_exception=True)
         serializer.save(performed_by=request.user)
         return Response(serializer.data)
-
-    @action(
-        detail=False,
-        methods=["put"],
-        url_path="me/avatar",
-        serializer_class=serializers.UserAvatarSelfUpdateSerializer,
-        permission_classes=[permissions.IsAuthenticated],
-    )
-    def change_avatar_self(self, request, pk=None):
-        instance = request.user
-        serializer = self.get_serializer(instance, data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save(performed_by=request.user)
-        return Response(status=status.HTTP_204_NO_CONTENT)
