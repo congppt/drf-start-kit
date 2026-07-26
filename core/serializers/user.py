@@ -98,11 +98,10 @@ class UserSelfUpdateSerializer(common.FileAttachmentUpdateSerializerMixin, UserU
         fields = ["first_name", "last_name", "email", "preferences", "avatar"]
 
     def validate_avatar(self, value: models.FileAsset):
-        return self.validate_attachment_file(
-            value,
+        return self.get_attachment_input_serializer(
             field_name=AVATAR_FIELD_NAME,
             is_public=AVATAR_IS_PUBLIC,
-        )
+        ).validate_file(value)
 
     def update(self, instance: models.User, validated_data: dict):
         avatar = validated_data.pop("avatar", None)

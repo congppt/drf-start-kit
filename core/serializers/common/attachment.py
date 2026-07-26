@@ -45,16 +45,15 @@ class FileAttachmentInputSerializer(serializers.Serializer):
 
 
 class FileAttachmentUpdateSerializerMixin:
-    def validate_attachment_file(
+    def get_attachment_input_serializer(
         self,
-        value: models.FileAsset,
         field_name: str,
         is_public: bool = False,
-    ) -> models.FileAsset:
+    ) -> FileAttachmentInputSerializer:
         serializer = FileAttachmentInputSerializer(instance=self.instance, context=self.context)
         serializer.attachment_field_name = field_name
         serializer.is_public = is_public
-        return serializer.validate_file(value)
+        return serializer
 
     def link_attachment(
         self,
