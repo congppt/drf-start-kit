@@ -1,6 +1,6 @@
 import uuid
 
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -28,3 +28,10 @@ class FileAttachment(models.Model):
     object_id = models.CharField(max_length=64)
     content_object = GenericForeignKey("content_type", "object_id")
     field_name = models.CharField(max_length=50)
+
+
+class FileAttachmentMixin(models.Model):
+    attachments = GenericRelation(FileAttachment)
+
+    class Meta:
+        abstract = True
