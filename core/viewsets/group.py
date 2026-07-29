@@ -15,7 +15,7 @@ class GroupViewSet(mixins.ChoiceListModelMixin, viewsets.ModelViewSet):
 @extend_schema(
     parameters=[
         OpenApiParameter(
-            name="group_id",
+            name="parent_group_id",
             type=int,
             location=OpenApiParameter.PATH,
             description="Group ID",
