@@ -1,9 +1,13 @@
+import base64
+import binascii
 import os
+from collections.abc import Callable
 from urllib.parse import parse_qs, urlparse
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
 
 __ENV = os.getenv("ENV", "LOCAL").upper()
 _VALID_ENVS = frozenset({"LOCAL", "STAGING", "PRODUCTION"})
@@ -44,6 +48,7 @@ MINIO_PRIVATE_BUCKET = os.getenv("MINIO__PRIVATE_BUCKET")
 MINIO_SECURE = os.getenv("MINIO__SECURE", "false").lower() in {"1", "true", "yes"}
 _default_minio_scheme = "https" if MINIO_SECURE else "http"
 MINIO_PUBLIC_URL = os.getenv("MINIO__PUBLIC_URL", f"{_default_minio_scheme}://{MINIO_ENDPOINT}")
+MINIO_REGION = os.getenv("MINIO__REGION", "us-east-1")
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
@@ -65,6 +70,41 @@ DB_POOL_MAX_SIZE = 4
 LOG_RETENTION = int(os.getenv("LOG_RETENTION", "60"))
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+
+
+def read_context_root(getenv: Callable[[str, str | None], str | None] = os.getenv) -> str:
+    """Normalize CONTEXT_ROOT to a leading slash and no trailing slash.
+
+    Empty or "/" means the API is served at /api/. Other values are prefixed:
+    snapshift -> /snapshift, so routes live at /snapshift/api/.
+    """
+    value = (getenv("CONTEXT_ROOT", None) or "").strip()
+    if not value or value == "/":
+        return ""
+    prefixed = value if value.startswith("/") else f"/{value}"
+    return prefixed.rstrip("/")
+
+
+CONTEXT_ROOT = read_context_root()
+
+
+def read_root_credentials(getenv: Callable[[str, str | None], str | None] = os.getenv) -> tuple[str, str]:
+    username = (getenv("ROOT_USERNAME", None) or "").strip()
+    password_b64 = (getenv("ROOT_PASSWORD", None) or "").strip()
+    if not username:
+        raise EnvironmentError("ROOT_USERNAME is not configured")
+    if not password_b64:
+        raise EnvironmentError("ROOT_PASSWORD is not configured")
+    try:
+        password = base64.b64decode(password_b64, validate=True).decode("utf-8")
+    except (binascii.Error, UnicodeDecodeError) as exc:
+        raise EnvironmentError("ROOT_PASSWORD must be valid base64") from exc
+    if not password:
+        raise EnvironmentError("ROOT_PASSWORD decodes to an empty password")
+    return username, password
+
+
+ROOT_USERNAME, ROOT_PASSWORD = read_root_credentials()
 
 EMAIL_HOST = os.getenv("EMAIL__HOST", "")
 EMAIL_PORT = int(os.getenv("EMAIL__PORT", "587"))
