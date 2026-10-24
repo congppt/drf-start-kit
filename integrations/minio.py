@@ -34,6 +34,7 @@ class MinioClient:
             secret_key=self.__get_config("MINIO_SECRET_KEY"),
             http_client=http_client,
             secure=secure,
+            region=self.__get_config("MINIO_REGION"),
         )
 
     @property
@@ -51,8 +52,10 @@ class MinioClient:
         """
         Public-facing client used only to mint URLs browsers can open.
 
-        Endpoint/secure are taken from MINIO_PUBLIC_URL so signatures match the
-        host clients actually call (which may differ from the internal endpoint).
+        Endpoint/secure come from MINIO_PUBLIC_URL so SigV4 signs the reverse-proxy
+        host clients actually call, not MINIO_ENDPOINT. Region comes from MINIO_REGION
+        (SigV4 credential scope) so the SDK does not GetBucketLocation against that
+        public host.
         """
         if self.__presign_client is None:
             endpoint, secure = self.__get_public_endpoint()
