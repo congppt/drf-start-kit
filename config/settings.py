@@ -69,9 +69,9 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
     "DEFAULT_FILTER_BACKENDS": [
-        "core.filters.DjangoFilterBackend",
+        "extensions.filters.DjangoFilterBackend",
         "rest_framework.filters.SearchFilter",
-        "core.filters.OrderingFilter",
+        "extensions.filters.OrderingFilter",
     ],
     "DEFAULT_PAGINATION_CLASS": "extensions.pagination.Max100LimitOffsetPagination",
     "PAGE_SIZE": 10,
