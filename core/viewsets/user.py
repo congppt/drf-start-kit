@@ -1,10 +1,10 @@
 from django.db.models import Q
-from extensions import pagination, permissions
+from extensions import pagination, permissions, throttling
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .. import filters, mixins, models, serializers, throttling
+from .. import filters, mixins, models, serializers
 
 
 class UserFilter(filters.FilterSet):
@@ -96,9 +96,9 @@ class UserViewSet(
         url_path="me/password",
         serializer_class=serializers.PasswordSelfChangeSerializer,
         permission_classes=[permissions.IsAuthenticated],
-        throttle_classes=[throttling.factory.per_view_user_rate_throttle("10/minute")],
+        throttle_classes=[throttling.scoped_rate_throttle("10/minute", "change_personal_password")],
     )
-    def change_password_self(self, request, pk=None):
+    def change_personal_password(self, request, pk=None):
         instance = request.user
         serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -111,9 +111,9 @@ class UserViewSet(
         url_path="me/avatar/presigned-upload-url",
         serializer_class=serializers.UserAvatarUploadUrlSerializer,
         permission_classes=[permissions.IsAuthenticated],
-        throttle_classes=[throttling.factory.per_view_user_rate_throttle("10/minute")],
+        throttle_classes=[throttling.scoped_rate_throttle("10/minute", "avatar_upload")],
     )
-    def generate_avatar_upload_url_self(self, request, pk=None):
+    def generate_personal_avatar_upload_url(self, request, pk=None):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(performed_by=request.user)
