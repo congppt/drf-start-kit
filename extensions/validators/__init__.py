@@ -20,18 +20,12 @@ from rest_framework.validators import (
     UniqueValidator,
 )
 
-from .common import (
+from .attachment import (
     DocumentFileNameValidator,
     FileSizeValidator,
-    HexColorValidator,
     ImageFileExtensionValidator,
     ImageFileNameValidator,
-    IntegerListValidator,
-    IntegerValidator,
-    IPv4OrIPv6Validator,
-    IPv4Validator,
-    IPv6Validator,
-    PhoneNumberValidator,
-    SlugValidator,
-    UnicodeSlugValidator,
 )
+from .ip import IPv4OrIPv6Validator, IPv4Validator, IPv6Validator
+from .number import IntegerListValidator, IntegerValidator
+from .string import HexColorValidator, PhoneNumberValidator, SlugValidator, UnicodeSlugValidator

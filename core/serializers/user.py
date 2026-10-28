@@ -1,11 +1,12 @@
 from django.contrib.auth import password_validation
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
+from extensions import validators
 from rest_framework import serializers
 
 from integrations.minio import minio
 
-from .. import models, validators
+from .. import models
 from . import common
 from .common.audit import ExcludeDeleteModelSerializer
 from .permission import PermissionSerializer

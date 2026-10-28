@@ -55,7 +55,7 @@ class FileSizeValidator:
         if self.max_size is not UNSET_MAX_SIZE:
             kwargs["max_size"] = self.max_size
         return (
-            "core.validators.common.file.FileSizeValidator",
+            "extensions.validators.attachment.FileSizeValidator",
             [],
             kwargs,
         )

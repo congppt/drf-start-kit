@@ -4,11 +4,12 @@ from collections.abc import Sequence
 from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from extensions import validators
 from rest_framework import serializers
 
 from integrations.minio import minio
 
-from ... import models, validators
+from ... import models
 
 
 class FileAttachmentInputSerializer(serializers.Serializer):
