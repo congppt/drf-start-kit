@@ -73,7 +73,7 @@ REST_FRAMEWORK = {
         "rest_framework.filters.SearchFilter",
         "core.filters.OrderingFilter",
     ],
-    "DEFAULT_PAGINATION_CLASS": "core.pagination.Max100LimitOffsetPagination",
+    "DEFAULT_PAGINATION_CLASS": "extensions.pagination.Max100LimitOffsetPagination",
     "PAGE_SIZE": 10,
 }
 

@@ -1,9 +1,10 @@
 from django.db.models import Q
+from extensions import pagination
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .. import filters, mixins, models, pagination, permissions, serializers, throttling
+from .. import filters, mixins, models, permissions, serializers, throttling
 
 
 class UserFilter(filters.FilterSet):
@@ -24,7 +25,7 @@ class UserViewSet(
     serializer_class = serializers.UserSerializer
     permission_classes = [permissions.DjangoModelPermissions]
     filterset_class = UserFilter
-    pagination_class = pagination.factory.limit_offset_class(maximum_limit=200)
+    pagination_class = pagination.limit_offset_class(maximum_limit=200)
     search_fields = ["username", "email", "first_name", "last_name"]
     ordering_fields = ["username", "email", "created", "date_joined"]
     ordering = ["username"]

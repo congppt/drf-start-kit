@@ -1,4 +1,4 @@
-from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.pagination import CursorPagination, LimitOffsetPagination, PageNumberPagination
 
 __CACHE = {}
 
@@ -23,3 +23,6 @@ def limit_offset_class(maximum_limit: int | None = 100):
     CustomLimitOffsetPagination.__qualname__ = class_name
     __CACHE[class_name] = CustomLimitOffsetPagination
     return CustomLimitOffsetPagination
+
+Max100LimitOffsetPagination = limit_offset_class(100)
+
