@@ -1,4 +1,5 @@
-from rest_framework import permissions, viewsets
+from extensions import permissions
+from rest_framework import viewsets
 
 from .. import filters, models, serializers
 
@@ -14,7 +15,7 @@ class LogFilter(filters.FilterSet):
 
 
 class LogViewSet(viewsets.ReadOnlyModelViewSet):
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAdminUser]
     filterset_class = LogFilter
     serializer_class = serializers.LogEntrySerializer
     queryset = models.LogEntry.objects.order_by("-timestamp").all()

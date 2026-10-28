@@ -1,13 +1,14 @@
 from drf_spectacular.utils import OpenApiParameter, extend_schema
+from extensions import permissions
 from rest_framework import viewsets
 
-from .. import mixins, models, permissions, serializers
+from .. import mixins, models, serializers
 from .permission import PermissionViewSet
 
 
 class GroupViewSet(mixins.ChoiceListModelMixin, viewsets.ModelViewSet):
     queryset = models.Group.objects.all()
-    permission_classes = [permissions.DjangoModelPermissions, permissions.factory.permissions_class("auth.view_group")]
+    permission_classes = [permissions.DjangoModelPermissions, permissions.permissions_class("auth.view_group")]
     serializer_class = serializers.GroupSerializer
     search_fields = ["name"]
 

@@ -1,4 +1,13 @@
-from rest_framework import permissions
+from rest_framework.permissions import (
+    AllowAny,
+    DjangoModelPermissions,
+    IsAdminUser,
+    IsAuthenticated,
+    IsAuthenticatedOrReadOnly,
+)
+from rest_framework.permissions import (
+    BasePermission as _BasePermission,
+)
 
 __CACHE = {}
 
@@ -8,7 +17,7 @@ def permissions_class(*perms: str):
     if class_name in __CACHE:
         return __CACHE[class_name]
 
-    class RequiredPermissions(permissions.BasePermission):
+    class RequiredPermissions(_BasePermission):
         def has_permission(self, request, view):
             return request.user and request.user.has_perms(perms)
 

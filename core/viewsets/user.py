@@ -1,10 +1,10 @@
 from django.db.models import Q
-from extensions import pagination
+from extensions import pagination, permissions
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .. import filters, mixins, models, permissions, serializers, throttling
+from .. import filters, mixins, models, serializers, throttling
 
 
 class UserFilter(filters.FilterSet):
