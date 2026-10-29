@@ -10,11 +10,11 @@ Use ``SYSTEM_ACTOR`` when there is no authenticated caller:
 - management commands and data migrations
 - fixtures and bootstrap scripts
 - background tasks (Huey)
-- ``create_superuser`` (wired in ``core.models.user``)
+- ``create_superuser`` (wired in ``user.models``)
 
 Example::
 
-    from core.constants import SYSTEM_ACTOR
+    from shared_kernel.constants import SYSTEM_ACTOR
 
     Model.objects.create(..., performed_by=SYSTEM_ACTOR)
     instance.save(performed_by=SYSTEM_ACTOR)
@@ -28,7 +28,7 @@ For HTTP API writes, always pass ``request.user`` via viewset mixins or
 ``serializer.save(performed_by=request.user)``.
 """
 
-from .models import User
+from user.models import User
 
 SYSTEM_ACTOR = User(
     username="system",

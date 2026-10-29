@@ -11,7 +11,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
-from core.constants import SYSTEM_ACTOR
+from shared_kernel.constants import SYSTEM_ACTOR
 from user.models import User
 
 from . import models

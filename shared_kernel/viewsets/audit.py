@@ -1,6 +1,6 @@
 from rest_framework import viewsets
 
-from ... import mixins
+from .. import mixins
 
 
 class AuditableModelViewSet(

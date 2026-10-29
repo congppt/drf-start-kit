@@ -9,7 +9,7 @@ from rest_framework import serializers
 
 from integrations.minio import minio
 
-from ... import models
+from .. import models
 
 
 class FileAttachmentInputSerializer(serializers.Serializer):
@@ -93,7 +93,7 @@ class FilePresignedUploadUrlSerializer(serializers.Serializer):
     upload_ttl_seconds = settings.FILE_ORPHANED_INTERVAL
 
     def create(self, validated_data: dict):
-        performed_by: models.User = validated_data.pop("performed_by")
+        performed_by = validated_data.pop("performed_by")
         content_type, _ = mimetypes.guess_type(validated_data["file_name"])
         if not content_type:
             # MinIO default content type
