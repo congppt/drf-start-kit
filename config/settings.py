@@ -105,7 +105,7 @@ MIDDLEWARE = [
     # 'django.contrib.auth.middleware.AuthenticationMiddleware',
     # 'django.contrib.messages.middleware.MessageMiddleware',
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    "core.middlewares.LoggingMiddleware",
+    "extensions.middlewares.LoggingMiddleware",
     "djangorestframework_camel_case.middleware.CamelCaseMiddleWare",
 ]
 # Disable default logging configuration
