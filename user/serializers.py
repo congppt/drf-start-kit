@@ -2,17 +2,23 @@ from django.contrib.auth import password_validation
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 from extensions import validators
+from extensions.serializers import BaseChoiceSerializer
 from rest_framework import serializers
 
+from identity.models import Group
+from identity.serializers import PermissionSerializer
 from integrations.minio import minio
+from shared_kernel.models import FileAsset, UploadStatus
+from shared_kernel.serializers import (
+    ExcludeDeleteModelSerializer,
+    FileAttachmentUpdateSerializerMixin,
+    FilePresignedUploadUrlSerializer,
+)
 
-from .. import models
-from . import common
-from .common.audit import ExcludeDeleteModelSerializer
-from .permission import PermissionSerializer
+from .models import User
 
-AVATAR_FIELD_NAME = models.User.AVATAR_FIELD_NAME
-AVATAR_IS_PUBLIC = models.User.AVATAR_IS_PUBLIC
+AVATAR_FIELD_NAME = User.AVATAR_FIELD_NAME
+AVATAR_IS_PUBLIC = User.AVATAR_IS_PUBLIC
 
 
 class UserPreferencesSerializer(serializers.Serializer):
@@ -22,16 +28,16 @@ class UserPreferencesSerializer(serializers.Serializer):
 
 class UserSerializer(ExcludeDeleteModelSerializer):
     avatar_url = serializers.SerializerMethodField()
-    groups = common.BaseChoiceSerializer(many=True, read_only=True)
+    groups = BaseChoiceSerializer(many=True, read_only=True)
     preferences = UserPreferencesSerializer(required=False)
 
     class Meta:
-        model = models.User
+        model = User
         exclude = ["password", "user_permissions"]
 
-    def get_avatar_url(self, obj: models.User) -> str | None:
+    def get_avatar_url(self, obj: User) -> str | None:
         attachment = (
-            obj.attachments.filter(field_name=AVATAR_FIELD_NAME, file__status=models.UploadStatus.READY)
+            obj.attachments.filter(field_name=AVATAR_FIELD_NAME, file__status=UploadStatus.READY)
             .select_related("file")
             .first()
         )
@@ -44,24 +50,24 @@ class UserSerializer(ExcludeDeleteModelSerializer):
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
-    groups = serializers.PrimaryKeyRelatedField(many=True, queryset=models.Group.objects.all())
+    groups = serializers.PrimaryKeyRelatedField(many=True, queryset=Group.objects.all())
     preferences = UserPreferencesSerializer(required=False)
 
     class Meta:
-        model = models.User
+        model = User
         exclude = ["username", "password", "last_login", "date_joined", "user_permissions"]
-    
+
     def validate_email(self, value: str):
         if not value:
             return value
-        qs = models.User.all_objects.filter(email__iexact=value)
+        qs = User.all_objects.filter(email__iexact=value)
         if self.instance is not None:
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
             raise serializers.ValidationError(_("A user with that email already exists."))
         return value
 
-    def update(self, instance: models.User, validated_data: dict):
+    def update(self, instance: User, validated_data: dict):
         performed_by = validated_data.pop("performed_by")
         groups = validated_data.pop("groups", None)
         for key, value in validated_data.items():
@@ -72,39 +78,40 @@ class UserUpdateSerializer(serializers.ModelSerializer):
                 instance.groups.set(groups)
         return instance
 
+
 class UserCreateSerializer(UserUpdateSerializer):
     password = serializers.CharField(validators=[password_validation.validate_password])
 
     class Meta:
-        model = models.User
+        model = User
         exclude = ["user_permissions", "last_login", "date_joined"]
 
     def create(self, validated_data: dict):
         groups = validated_data.pop("groups")
         with transaction.atomic():
-            user = models.User.objects.create_user(**validated_data)
+            user = User.objects.create_user(**validated_data)
             user.groups.set(groups)
         return user
 
 
-class UserSelfUpdateSerializer(common.FileAttachmentUpdateSerializerMixin, UserUpdateSerializer):
+class UserSelfUpdateSerializer(FileAttachmentUpdateSerializerMixin, UserUpdateSerializer):
     avatar = serializers.PrimaryKeyRelatedField(
-        queryset=models.FileAsset.objects.all(),
+        queryset=FileAsset.objects.all(),
         write_only=True,
         required=False,
     )
 
     class Meta:
-        model = models.User
+        model = User
         fields = ["first_name", "last_name", "email", "preferences", "avatar"]
 
-    def validate_avatar(self, value: models.FileAsset):
+    def validate_avatar(self, value: FileAsset):
         return self.get_attachment_input_serializer(
             field_name=AVATAR_FIELD_NAME,
             is_public=AVATAR_IS_PUBLIC,
         ).validate_file(value)
 
-    def update(self, instance: models.User, validated_data: dict):
+    def update(self, instance: User, validated_data: dict):
         avatar = validated_data.pop("avatar", None)
         with transaction.atomic():
             instance = super().update(instance, validated_data)
@@ -126,7 +133,7 @@ class UserSelfSerializer(serializers.Serializer):
 class PasswordChangeSerializer(serializers.Serializer):
     new_password = serializers.CharField(validators=[password_validation.validate_password])
 
-    def update(self, instance: models.User, validated_data: dict):
+    def update(self, instance: User, validated_data: dict):
         performed_by = validated_data.pop("performed_by")
         instance.set_password(validated_data["new_password"])
         instance.save(performed_by=performed_by)
@@ -147,7 +154,7 @@ class PasswordSelfChangeSerializer(PasswordChangeSerializer):
         return attrs
 
 
-class UserAvatarUploadUrlSerializer(common.FilePresignedUploadUrlSerializer):
+class UserAvatarUploadUrlSerializer(FilePresignedUploadUrlSerializer):
     file_name = serializers.CharField(write_only=True, validators=[validators.ImageFileNameValidator()])
 
     is_public = AVATAR_IS_PUBLIC

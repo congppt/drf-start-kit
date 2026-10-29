@@ -1,27 +1,31 @@
 from django.db.models import Q
-from extensions import pagination, permissions, throttling
+from extensions import filters, mixins, pagination, permissions, throttling
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .. import filters, mixins, models, serializers
+from identity.models import Group, Permission
+from shared_kernel.mixins import CreateAuditableModelMixin, UpdateAuditableModelMixin
+
+from . import serializers
+from .models import User
 
 
 class UserFilter(filters.FilterSet):
-    groups = filters.ModelMultipleChoiceFilter(queryset=models.Group.objects.all())
+    groups = filters.ModelMultipleChoiceFilter(queryset=Group.objects.all())
 
     class Meta:
-        model = models.User
+        model = User
         fields = ["is_active"]
 
 
 class UserViewSet(
-    mixins.CreateAuditableModelMixin,
-    mixins.UpdateAuditableModelMixin,
+    CreateAuditableModelMixin,
+    UpdateAuditableModelMixin,
     mixins.ChoiceListModelMixin,
     viewsets.ReadOnlyModelViewSet,
 ):
-    queryset = models.User.objects.prefetch_related("attachments__file", "groups").all()
+    queryset = User.objects.prefetch_related("attachments__file", "groups").all()
     serializer_class = serializers.UserSerializer
     permission_classes = [permissions.DjangoModelPermissions]
     filterset_class = UserFilter
@@ -33,7 +37,7 @@ class UserViewSet(
     def get_queryset(self):
         queryset = super().get_queryset()
         user = self.request.user
-        if not user.has_perm("core.view_user"):
+        if not user.has_perm("user.view_user"):
             return queryset.filter(pk=user.pk)
         return queryset
 
@@ -70,7 +74,7 @@ class UserViewSet(
     def retrieve_self(self, request):
         instance = request.user
         instance_perms = (
-            models.Permission.objects.select_related("content_type")
+            Permission.objects.select_related("content_type")
             .filter(Q(user=instance) | Q(group__user=instance))
             .distinct()
         )
