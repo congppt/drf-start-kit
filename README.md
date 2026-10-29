@@ -13,7 +13,6 @@ A starter kit for building APIs with Django REST Framework. It provides a ready-
 | Password reset request | `POST /api/password-reset/` |
 | Password reset confirm | `POST /api/password-reset/confirm/` |
 | Current user permissions | `GET /api/users/me/permissions/` |
-| Choice metadata | `GET /api/meta/choices/{key}/` |
 
 ## Table of Contents
 
@@ -88,10 +87,10 @@ Pin direct dependencies in `requirements.txt` with `==`. Add or bump a package t
 
 `bash dev.sh` and `bash dev.sh local` are safe to rerun. The script checks for existing setup such as `.env`, `.venv`, and GNU gettext before creating or installing anything. The generated `.env` uses development defaults; review it before using it outside local development.
 
-Load bundled fixtures when you add seed data under `core/fixtures/`:
+Load bundled fixtures when you add seed data under `shared_kernel/fixtures/`:
 
 ```bash
-python manage.py loaddata core/fixtures/group.json user/fixtures/user.json
+python manage.py loaddata shared_kernel/fixtures/group.json user/fixtures/user.json
 ```
 
 ## Configuration
@@ -156,20 +155,25 @@ When `ENV` is not `PRODUCTION`, `CORS_ALLOW_ALL_ORIGINS` is enabled so LOCAL and
 config/                 Django project settings, ASGI/WSGI, root URLs
 user/                   User accounts: model, API, fixtures, root-user bootstrap
 identity/               Sign-in, password reset, groups, and permissions
-core/                   Shared application package
+journal/                Stored application logs: model, API, sync, and retention
+shared_kernel/          Shared models, serializers, viewsets, and tasks
   models/               Domain models and shared model base classes
   serializers/          DRF serializers grouped by resource
   viewsets/             DRF viewsets and action routing
-  views/                URL registration (health, meta, log)
-  permissions/          Permission exports and permission factories
-  pagination/           Pagination classes and factories
-  mixins/               DRF and auditable model mixins
-  validators/           Django, DRF, and project validators
-  usecases/             Optional write orchestration for complex business flows
-  services/             Optional reusable domain and infrastructure helpers
-  tasks/                Huey background and periodic tasks
-  fixtures/             Django fixture files for seed data
+  views/                URL registration (health)
+  mixins/               Auditable model mixins
+  tasks/                Huey logger sink and file garbage collection
   migrations/           Django schema migrations
+extensions/             Shared DRF helpers used across apps
+  enums.py              Optional vocabularies such as gender and country
+  fields.py             Model fields such as TextChoiceField
+  filters/              Filter backends and FilterSet exports
+  middlewares/          Request logging middleware
+  mixins/               DRF mixins and choice-list behavior
+  pagination/           Pagination classes
+  permissions/          Permission classes
+  serializers/          Choice serializers and DRF serializer re-exports
+  validators/           Django, DRF, and project validators
 integrations/           External service clients, for example MinIO
 i18n/                   Third-party translation override msgids
 locale/                 Django translation catalogs
@@ -180,24 +184,24 @@ pyproject.toml          Ruff and project tool configuration
 docker-compose.yml      Local services: app, worker, Postgres, Redis, MinIO
 ```
 
-`core.views.__init__` automatically imports URL modules and collects their `url_patterns`, so adding a new file under `core/views/` registers endpoints without editing a central list.
+`shared_kernel.views.__init__` automatically imports URL modules and collects their `url_patterns`, so adding a new file under `shared_kernel/views/` registers endpoints without editing a central list.
 
-Registered URL modules today: `health`, `meta`, `log`. Token, password-reset, group, and permission routes live in `identity/urls.py`. User routes live in `user/urls.py`. Both are included from `config/urls.py`.
+Registered URL modules today: `health`. Log routes live in `journal/urls.py`. Token, password-reset, group, and permission routes live in `identity/urls.py`. User routes live in `user/urls.py`. All are included from `config/urls.py`.
 
 ## Coding Conventions
 
-- Keep each resource split by layer: model in `core/models`, serializer in `core/serializers`, viewset in `core/viewsets`, and URL registration in `core/views`.
+- Keep each resource split by layer: model in `shared_kernel/models`, serializer in `shared_kernel/serializers`, viewset in `shared_kernel/viewsets`, and URL registration in `shared_kernel/views`.
 - Prefer `ModelViewSet` for standard full CRUD. Use `AuditableModelViewSet` when the model extends `AuditableModel`. Use `GenericViewSet` with explicit mixins only when an endpoint supports a subset of actions (for example list-only) or omits standard mixins in favor of custom `@action` handlers (for example `UserViewSet`).
-- Put request validation in serializers and reusable field validation in `core/validators`.
-- Prefer explicit `Meta.fields` in serializers so the API contract is easy to review. For auditable models, inherit from bases in `core.serializers.common` instead of repeating audit `exclude` and `read_only_fields`.
+- Put request validation in serializers and reusable field validation in `extensions/validators`.
+- Prefer explicit `Meta.fields` in serializers so the API contract is easy to review. For auditable models, inherit from bases in `shared_kernel.serializers` instead of repeating audit `exclude` and `read_only_fields`.
 - Use `get_serializer_class()` when different actions need different read/write serializers.
 - Pass `performed_by=request.user` when creating, updating, or deleting auditable models (see [Auditable Models and Serializers](#auditable-models-and-serializers)).
 - Use `select_related()` and `prefetch_related()` on viewset querysets when serializers access related objects.
 - APIs use camelCase JSON through `djangorestframework-camel-case`; Python code stays snake_case.
-- Import through `core` package modules that re-export shared symbols instead of pulling the same names from upstream libraries. Inside `core`, use relative package imports and access symbols on those namespaces — for example `from .. import models`, `serializers`, `validators`, `permissions`, `pagination`, and `mixins`, then `permissions.DjangoModelPermissions`, `validators.MinValueValidator`, `serializers.ModelSerializer`. The package `__init__.py` files own the re-exports from Django, DRF, and project code; resource modules (viewsets, serializers, and so on) should not import re-exported symbols directly from `rest_framework.*` or `django.core.validators` when they are available on a `core` package.
-- Group imports in this order: standard library, third-party packages (only symbols not re-exported by `core`, such as `rest_framework.status` or `django.db.transaction`), then local `core` package imports.
-- Keep simple writes in serializers (`create` / `update`, `validate_*`). Use `core/usecases` and `core/services` only when a flow needs multi-entity transactions, reuse from tasks or commands, or business logic that outgrows a single serializer. GET/list/retrieve stay in viewsets and querysets.
-- Expose static enum options through `MetaViewSet` (see [Choice API](#choice-api)). Use `ChoiceSerializer` subclasses on resource viewsets for database-backed option lists.
+- Import audit and files through `shared_kernel`. Import stored logs through `journal`. Import filters, pagination, permissions, throttling, validators, DRF mixins, choice serializers, model fields, and optional enums through `extensions`. Inside an app, use relative imports for that app's own modules. Do not import a symbol directly from `rest_framework.*` or `django.core.validators` when `shared_kernel` or `extensions` already re-exports it.
+- Group imports in this order: standard library, third-party packages (only symbols not re-exported by `shared_kernel` or `extensions`, such as `rest_framework.status` or `django.db.transaction`), then local package imports.
+- Keep simple writes in serializers (`create` / `update`, `validate_*`). Use `shared_kernel/usecases` and `shared_kernel/services` only when a flow needs multi-entity transactions, reuse from tasks or commands, or business logic that outgrows a single serializer. GET/list/retrieve stay in viewsets and querysets.
+- Expose static enum options from the app that owns the entity (see [Choice API](#choice-api)). Use `ChoiceSerializer` subclasses on resource viewsets for database-backed option lists.
 - Use timezone-aware datetimes in Django code — `timezone.now()`, `make_aware()`, `localtime()` (see [Date and time](#date-and-time)).
 
 ## Use Cases and Services
@@ -211,9 +215,8 @@ For most endpoints, DRF serializers are enough. Add layers when you see at least
 Suggested layout:
 
 ```text
-core/usecases/<flow>.py     orchestration, @transaction.atomic at the outer boundary
-core/services/<entity>.py     focused entity or infrastructure operations
-core/services/common/         shared helpers (files, notifications, ...)
+shared_kernel/usecases/<flow>.py     orchestration, @transaction.atomic at the outer boundary
+shared_kernel/services/<entity>.py     focused entity or infrastructure operations
 ```
 
 Call direction:
@@ -228,16 +231,16 @@ Do not route simple CRUD through use cases just for consistency. Read endpoints 
 
 When adding a new API resource, create the viewset as a thin orchestration layer and keep business validation in serializers or domain helpers.
 
-1. Define the model and manager behavior in `core/models`. Use `AuditableModel` when the resource needs actor tracking and soft delete.
-2. Add serializers in `core/serializers`: one read serializer, plus separate create/update/action serializers when write inputs differ from response shape.
-3. Add reusable field validators in `core/validators` and serializer-level validation for checks that need request context, related models, or external services.
+1. Define the model and manager behavior in `shared_kernel/models`. Use `AuditableModel` when the resource needs actor tracking and soft delete.
+2. Add serializers in `shared_kernel/serializers`: one read serializer, plus separate create/update/action serializers when write inputs differ from response shape.
+3. Add reusable field validators in `extensions/validators` and serializer-level validation for checks that need request context, related models, or external services.
 4. Add a `FilterSet` beside the viewset when list endpoints need query filters.
-5. Create the viewset in `core/viewsets`: `ModelViewSet` or `AuditableModelViewSet` for full CRUD; otherwise `GenericViewSet` with only the mixins you need.
+5. Create the viewset in `shared_kernel/viewsets`: `ModelViewSet` or `AuditableModelViewSet` for full CRUD; otherwise `GenericViewSet` with only the mixins you need.
 6. Set `queryset`, `permission_classes`, `serializer_class` or `get_serializer_class()`, `filterset_class`, and `pagination_class` explicitly.
 7. Optimize the queryset for serializer access with `select_related()` and `prefetch_related()`.
 8. For auditable writes, implement `perform_create()`, `perform_update()`, and `perform_destroy()` or use the auditable mixins.
 9. Add custom operations with `@action`, including method, `detail`, `url_path`, action-specific permissions, validation, and response status.
-10. Register the route in a file under `core/views` so `core.views.__init__` can collect it into `core.urls`.
+10. Register the route in a file under `shared_kernel/views` so `shared_kernel.views.__init__` can collect it into `shared_kernel.urls`.
 11. Verify the endpoint in Swagger and add tests when behavior includes permissions, filters, validation, or side effects.
 
 `UserViewSet` is the main reference: `DjangoModelPermissions`, queryset scoping without `user.view_user`, `UserFilter`, limit-offset pagination, action-specific serializers, self-service endpoints, password validation, avatar presigned upload URLs, and MinIO-backed file verification.
@@ -284,25 +287,24 @@ Expose static Django `Choices` enums to the frontend for select, radio, and drop
 
 For dynamic option lists backed by database rows (for example users for a `<select>`), subclass `ChoiceSerializer` on the resource viewset instead — see `UserChoicesSerializer` with `GET /api/users/?for=options`.
 
-### Registering a new choice enum
+### Exposing an enum
 
-1. Define the enum under `core/models/<domain>/enums.py` (or alongside the model).
-2. Re-export it from `core/models/__init__.py` when other modules should import it as `models.<Name>`.
-3. Add the class to `_build_choice_registry(...)` in `core/viewsets/meta.py`.
+Define the enum alongside the model that stores it, in that entity's app. Optional vocabularies that many projects will not use, such as gender and country, live in `extensions/enums.py` and are not served by an endpoint until an app chooses to.
 
-The URL slug is derived from the class name:
+Add a list action on the owning viewset. Serialize the members with `ChoiceLimitOffsetSerializer` from `extensions.serializers`.
 
 ```python
-slugify(camel_case_to_spaces(UploadStatus.__name__))  # → "upload-status"
+@action(detail=False, methods=["get"], url_path="statuses", serializer_class=ChoiceLimitOffsetSerializer)
+def statuses(self, request):
+    data = {"count": len(UploadStatus), "next": None, "previous": None, "results": list(UploadStatus)}
+    return Response(self.get_serializer(data).data)
 ```
 
-Endpoint: `GET /api/meta/choices/upload-status/`
-
-Keep registration explicit — do not auto-discover every `Choices` class in the project. `_build_choice_registry` raises if two classes resolve to the same slug.
+That is `GET /api/<resource>/statuses/` on the app that owns `UploadStatus`. Do not collect enums from other apps into one catalog.
 
 ### Response shape
 
-`MetaViewSet` returns a read-only limit-offset envelope so front ends can reuse the same list-response helpers as resource endpoints. Choice lists are not paginated (`next` and `previous` are always `null`); `count` is the number of enum members.
+The action returns a read-only limit-offset envelope so front ends can reuse the same list-response helpers as resource endpoints. Choice lists are not paginated (`next` and `previous` are always `null`); `count` is the number of enum members.
 
 Each item is serialized through `ChoiceSerializer`:
 
@@ -336,7 +338,7 @@ If a choice needs a UI color token, expose it on the enum member (for example a 
 
 ### Models
 
-`core.models.common.AuditableModel` adds audit fields and soft delete behavior:
+`shared_kernel.models.AuditableModel` adds audit fields and soft delete behavior:
 
 - `created`, `created_by`
 - `updated`, `updated_by`
@@ -353,7 +355,7 @@ Model.objects.create(..., performed_by=request.user)
 Model.objects.filter(...).update(..., performed_by=request.user)
 ```
 
-`AuditableModel.save()` (`core/models/common/audit.py`) requires `performed_by`, stamps `created_by` on insert and `updated_by` on update, then delegates to Django's `Model.save()`.
+`AuditableModel.save()` (`shared_kernel/models/audit.py`) requires `performed_by`, stamps `created_by` on insert and `updated_by` on update, then delegates to Django's `Model.save()`.
 
 Custom serializer `create()` / `update()` methods must `pop('performed_by')` from `validated_data` and forward it to `instance.save(performed_by=...)` or `Model.objects.create(..., performed_by=...)`.
 
@@ -367,7 +369,7 @@ Use `AuditableModelViewSet` for full CRUD on auditable models with actor trackin
 
 ### Serializer bases
 
-`core.serializers.common` provides model serializer bases:
+`shared_kernel.serializers` provides model serializer bases:
 
 | Base | Behavior |
 |------|----------|
@@ -381,7 +383,7 @@ Prefer explicit `Meta.fields` for most serializers. Use these bases when a seria
 
 Auditable models require `performed_by` on every write. HTTP viewsets pass `request.user`; offline flows (management commands, Huey tasks, fixtures, migrations) have no caller.
 
-`core/constants.py` exports `SYSTEM_ACTOR` — an **unsaved** `User(username='system')`. It is never inserted into the database. Audit fields store the string `'system'` via `performed_by.username`.
+`shared_kernel/constants.py` exports `SYSTEM_ACTOR` — an **unsaved** `User(username='system')`. It is never inserted into the database. Audit fields store the string `'system'` via `performed_by.username`.
 
 ### When to use
 
@@ -399,7 +401,7 @@ Auditable models require `performed_by` on every write. HTTP viewsets pass `requ
 Import once and pass as `performed_by` on any auditable write:
 
 ```python
-from core.constants import SYSTEM_ACTOR
+from shared_kernel.constants import SYSTEM_ACTOR
 
 # create
 User.objects.create_user(username='bot', password='...', performed_by=SYSTEM_ACTOR)
@@ -416,7 +418,7 @@ In a management command:
 
 ```python
 from django.core.management.base import BaseCommand
-from core.constants import SYSTEM_ACTOR
+from shared_kernel.constants import SYSTEM_ACTOR
 from user.models import User
 
 class Command(BaseCommand):
@@ -431,7 +433,7 @@ class Command(BaseCommand):
 In a Huey task:
 
 ```python
-from core.constants import SYSTEM_ACTOR
+from shared_kernel.constants import SYSTEM_ACTOR
 
 @djhuey.db_task()
 def reconcile_records():
@@ -463,7 +465,7 @@ Only do this if every call site reads `performed_by.username` and never passes t
 
 ### Permissions
 
-Exported from `core.permissions`:
+Exported from `extensions.permissions`:
 
 ```python
 permission_classes = [permissions.DjangoModelPermissions]
@@ -481,7 +483,7 @@ Global default: limit-offset pagination, page size `10`, max limit `100`.
 
 ```python
 REST_FRAMEWORK = {
-    "DEFAULT_PAGINATION_CLASS": "core.pagination.Max100LimitOffsetPagination",
+    "DEFAULT_PAGINATION_CLASS": "extensions.pagination.Max100LimitOffsetPagination",
     "PAGE_SIZE": 10,
 }
 ```
@@ -515,11 +517,11 @@ Prefer `FilterSet` for typed filters (booleans, dates, FK/M2M ids) and reserve `
 
 ### Mixins
 
-`core.mixins` re-exports DRF model mixins (`ListModelMixin`, `CreateModelMixin`, etc.) and auditable mixins. Default to `ModelViewSet` or `AuditableModelViewSet` for full CRUD; compose explicit mixins on `GenericViewSet` when you need a subset of actions.
+`extensions.mixins` re-exports DRF model mixins (`ListModelMixin`, `CreateModelMixin`, `NestedViewSetMixin`, and so on) and `ChoiceListModelMixin`. `shared_kernel.mixins` holds the auditable mixins. Default to `ModelViewSet` or `AuditableModelViewSet` for full CRUD; compose explicit mixins on `GenericViewSet` when you need a subset of actions.
 
 ### Validators
 
-Import validators from `core.validators` (inside `core`, `from .. import validators`). Do not import re-exported symbols directly from `django.core.validators` or `rest_framework.validators`.
+Import validators from `extensions.validators`. Do not import re-exported symbols directly from `django.core.validators` or `rest_framework.validators`.
 
 **Commonly used (Django, re-exported):**
 
@@ -544,7 +546,7 @@ Import validators from `core.validators` (inside `core`, `from .. import validat
 | `UniqueTogetherValidator` | Composite uniqueness |
 | `UniqueForDateValidator` / `UniqueForMonthValidator` / `UniqueForYearValidator` | Time-scoped uniqueness |
 
-**Project validators (`core.validators.common`):**
+**Project validators (`extensions.validators`):**
 
 | Validator | Typical use |
 |-----------|-------------|
@@ -669,7 +671,7 @@ def mark_deleted(self):
 deleted = models.DateTimeField(default=timezone.now())
 ```
 
-See `AuditableModel` in `core/models/common/audit.py` for soft-delete timestamps.
+See `AuditableModel` in `shared_kernel/models/audit.py` for soft-delete timestamps.
 
 ### Queryset filters and calculations
 
@@ -679,7 +681,7 @@ Subtract or add `timedelta` from `timezone.now()` in the database layer:
 from datetime import timedelta
 from django.utils import timezone
 
-# pending uploads older than FILE_ORPHANED_INTERVAL — core/tasks/gc.py
+# pending uploads older than FILE_ORPHANED_INTERVAL — shared_kernel/tasks/gc.py
 created__lt=timezone.now() - timedelta(seconds=settings.FILE_ORPHANED_INTERVAL)
 
 # expired JWT cleanup
@@ -736,7 +738,7 @@ DRF `DateTimeField` accepts ISO 8601 input and works with aware datetimes. When 
 from datetime import timedelta
 from django.utils import timezone
 
-# core/serializers/common/attachment.py
+# shared_kernel/serializers/attachment.py
 "expires_at": timezone.now() + timedelta(seconds=self.upload_ttl_seconds)
 ```
 
@@ -766,8 +768,8 @@ For auditable write conventions, see [Auditable Models and Serializers](#auditab
 
 ```mermaid
 flowchart TD
-    MW["LoggingMiddleware.__call__<br/>core/middlewares/log.py"]
-    URL["URL resolve → router → ViewSet.as_view<br/>config/urls.py → core/views/"]
+    MW["LoggingMiddleware.__call__<br/>extensions/middlewares/log.py"]
+    URL["URL resolve → router → ViewSet.as_view<br/>config/urls.py → shared_kernel/views/"]
     DISPATCH["APIView.dispatch<br/>rest_framework/views.py"]
     INIT["initialize_request + initial<br/>JWT auth, permissions, throttles"]
     HANDLER["Action handler<br/>list / retrieve / create / update / destroy / @action"]
@@ -928,7 +930,7 @@ Protected viewsets default to `JWTAuthentication`. Use `permission_classes = [pe
 
 The avatar flow in `UserViewSet` demonstrates the pattern: create a pending `FileAsset`, return a presigned upload URL, validate the uploaded object with MinIO, attach it to the user, and mark the file as ready.
 
-Reusable serializers live in `core/serializers/common/attachment.py`:
+Reusable serializers live in `shared_kernel/serializers/attachment.py`:
 
 | Serializer | Role |
 |------------|------|
@@ -953,7 +955,7 @@ Cache keys are stable across equivalent positional and keyword calls by binding 
 
 ### Background tasks
 
-Huey is configured in `config.settings`; tasks live in `core/tasks`. Consumer worker count is set by `HUEY_WORKERS` (default `6`) in `HUEY["consumer"]["workers"]`.
+Huey is configured in `config.settings` and imports each installed app's `tasks` module. The process-wide task logger and failure signal live in `shared_kernel/tasks`. Log sync and retention live in `journal/tasks`. Consumer worker count is set by `HUEY_WORKERS` (default `6`) in `HUEY["consumer"]["workers"]`.
 
 The `send_password_reset_email` task delivers password-reset messages through `integrations.email` (console in local when SMTP is unset, otherwise SMTP).
 
@@ -978,7 +980,7 @@ The project uses two database aliases configured in `config/settings.py`:
 | `default` | `DATABASES["default"]` | PostgreSQL | Users, files, auth, Huey, etc. |
 | `logs` | `LOG_DB` | SQLite (`logs/logs.sqlite3`) | `LogEntry` only |
 
-`LogEntry` is routed to the logs database by `LogDBRouter` in `core/db_router.py` (reads, writes, and migrations). Use `LogEntry.objects` as usual — no custom manager required.
+`LogEntry` is routed to the logs database by `LogDBRouter` in `journal/db_router.py` (reads, writes, and migrations). Use `LogEntry.objects` as usual — no custom manager required.
 
 #### Create and apply migrations
 
@@ -1012,7 +1014,7 @@ python manage.py showmigrations --database=logs
 | `default` | All models **except** `LogEntry` |
 | `logs` (`LOG_DB`) | **`LogEntry` only** |
 
-You do not need an app label on the logs migrate command. This project is a single Django app (`core`); `migrate --database=logs` runs installed-app migrations, but the router skips every operation except `LogEntry`. Third-party apps (auth, JWT blacklist, …) will appear in the logs DB `django_migrations` table with no tables created — that is expected.
+You do not need an app label on the logs migrate command. `migrate --database=logs` runs installed-app migrations, but the router creates the `journal` app tables on that database and skips every other app. Third-party apps (auth, JWT blacklist, …) will appear in the logs DB `django_migrations` table with no tables created — that is expected.
 
 #### Tips
 
@@ -1027,8 +1029,8 @@ Docker Compose runs `migrate --noinput` on both databases automatically before t
 ### Fixtures
 
 ```bash
-python manage.py loaddata core/fixtures/data.json
-python -Xutf8 manage.py dumpdata --indent 2 -o core/fixtures/data.json
+python manage.py loaddata shared_kernel/fixtures/data.json
+python -Xutf8 manage.py dumpdata --indent 2 -o shared_kernel/fixtures/data.json
 ```
 
 Avoid dumping secrets, production credentials, tokens, or sensitive user data.
@@ -1100,7 +1102,7 @@ Example read-only API:
 class AuditEventViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     queryset = AuditEvent.objects.all().order_by("-created")
     serializer_class = AuditEventSerializer
-    permission_classes = [permissions.factory.permissions_class("core.view_auditevent")]
+    permission_classes = [permissions.factory.permissions_class("shared_kernel.view_auditevent")]
     filterset_fields = ["resource_type", "resource_id", "actor"]
 ```
 

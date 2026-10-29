@@ -40,7 +40,8 @@ CORS_ALLOW_ALL_ORIGINS = not env.IS_PRODUCTION or not env.ALLOWED_ORIGINS
 # Application definition
 INSTALLED_APPS = [
     # 'django.contrib.admin',
-    "core",
+    "shared_kernel",
+    "journal",
     "user",
     "identity",
     "django.contrib.auth",
@@ -165,7 +166,7 @@ DATABASES = {
     },
 }
 
-DATABASE_ROUTERS = ["core.db_router.LogDBRouter"]
+DATABASE_ROUTERS = ["journal.db_router.LogDBRouter"]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

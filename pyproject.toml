@@ -5,13 +5,13 @@ requires-python = ">=3.13"
 [tool.ruff]
 line-length = 120
 target-version = "py313"
-src = ["config", "core", "i18n", "identity", "integrations", "user", "utils"]
+src = ["config", "i18n", "identity", "integrations", "journal", "shared_kernel", "user", "utils"]
 
 [tool.ruff.lint]
 select = ["I"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["config", "core", "i18n", "identity", "integrations", "user", "utils"]
+known-first-party = ["config", "i18n", "identity", "integrations", "journal", "shared_kernel", "user", "utils"]
 
 [tool.ruff.format]
 quote-style = "double"
