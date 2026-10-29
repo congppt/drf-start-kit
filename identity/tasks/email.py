@@ -6,14 +6,13 @@ from django.utils.translation import gettext as _
 from huey.contrib import djhuey
 
 from integrations.email import send_templated_email
+from user.models import User
 from utils.log import logger
-
-from .. import models
 
 
 @djhuey.db_task()
 def send_password_reset_email(user_id: int) -> None:
-    user = models.User.objects.filter(pk=user_id, is_active=True).first()
+    user = User.objects.filter(pk=user_id, is_active=True).first()
     if not user or not user.email or not user.has_usable_password():
         return
 

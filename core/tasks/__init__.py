@@ -5,7 +5,6 @@ from huey.signals import SIGNAL_CANCELED, SIGNAL_ERROR, SIGNAL_LOCKED, SIGNAL_RE
 
 from utils.log import LOG_DIR, LOG_OPTS, LogLevel, logger
 
-from .email import *
 from .gc import *
 from .log import *
 

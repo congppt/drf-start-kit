@@ -18,9 +18,11 @@ Including another URLconf
 from django.urls import include, path
 from django.views.generic import RedirectView
 
-from core import urls
+from core import urls as core_urls
 
 urlpatterns = [
-    path("api/", include(urls)),
+    path("api/", include(core_urls)),
+    path("api/", include("identity.urls")),
+    path("api/", include("user.urls")),
     path("", RedirectView.as_view(url="api/", permanent=False)),
 ]

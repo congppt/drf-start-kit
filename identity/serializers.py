@@ -11,9 +11,29 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
-from .. import models
-from ..constants import SYSTEM_ACTOR
-from ..tasks.email import send_password_reset_email
+from core.constants import SYSTEM_ACTOR
+from user.models import User
+
+from . import models
+from .tasks import email
+
+
+class PermissionSerializer(serializers.ModelSerializer):
+    model = serializers.CharField(source="content_type.model", read_only=True)
+
+    class Meta:
+        model = models.Permission
+        fields = ["id", "name", "model"]
+
+
+class GroupSerializer(serializers.ModelSerializer):
+    permissions = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=models.Permission.objects.all(), write_only=True
+    )
+
+    class Meta:
+        model = models.Group
+        fields = ["id", "name", "permissions"]
 
 
 class TokenSerializer(TokenObtainPairSerializer):
@@ -31,8 +51,8 @@ class TokenSerializer(TokenObtainPairSerializer):
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField(write_only=True)
 
-    def validate_email(self, value: str) -> models.User:
-        user = models.User.objects.filter(
+    def validate_email(self, value: str) -> User:
+        user = User.objects.filter(
             email__iexact=value,
             is_active=True,
         ).first()
@@ -41,8 +61,8 @@ class PasswordResetRequestSerializer(serializers.Serializer):
         return user
 
     def create(self, validated_data: dict):
-        user: models.User = validated_data["email"]
-        send_password_reset_email(user.pk)
+        user: User = validated_data["email"]
+        email.send_password_reset_email(user.pk)
         return {}
 
 
@@ -54,8 +74,8 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     def validate(self, attrs: dict):
         try:
             user_id = force_str(urlsafe_base64_decode(attrs["uid"]))
-            user = models.User.objects.get(pk=user_id, is_active=True)
-        except (TypeError, ValueError, OverflowError, models.User.DoesNotExist) as exc:
+            user = User.objects.get(pk=user_id, is_active=True)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist) as exc:
             raise serializers.ValidationError(_("The password reset link is invalid or has expired.")) from exc
 
         if not default_token_generator.check_token(user, attrs["token"]):
@@ -65,7 +85,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         return attrs
 
     def create(self, validated_data: dict):
-        user: models.User = validated_data["user"]
+        user: User = validated_data["user"]
         with transaction.atomic():
             user.set_password(validated_data["new_password"])
             user.save(performed_by=SYSTEM_ACTOR)

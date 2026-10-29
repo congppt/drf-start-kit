@@ -1,5 +1,5 @@
 from django.urls import path
-from extensions import throttling
+from extensions.throttling import scoped_rate_throttle
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -9,20 +9,19 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
-from .. import serializers
-from ..throttling import AuthThrottle, ReAuthThrottle
+from .. import serializers, throttling
 
 
 class ThrottleTokenObtainPairView(TokenObtainPairView):
-    throttle_classes = [AuthThrottle, throttling.scoped_rate_throttle("30/minute", "auth")]
+    throttle_classes = [throttling.AuthThrottle, scoped_rate_throttle("30/minute", "auth")]
 
 
 class ThrottleTokenRefreshView(TokenRefreshView):
-    throttle_classes = [ReAuthThrottle, throttling.scoped_rate_throttle("30/minute", "reauth")]
+    throttle_classes = [throttling.ReAuthThrottle, scoped_rate_throttle("30/minute", "reauth")]
 
 
 class PasswordResetRequestView(APIView):
-    throttle_classes = [throttling.scoped_rate_throttle("5/minute", "password_reset_request")]
+    throttle_classes = [scoped_rate_throttle("5/minute", "password_reset_request")]
     serializer_class = serializers.PasswordResetRequestSerializer
 
     def post(self, request):
@@ -34,7 +33,7 @@ class PasswordResetRequestView(APIView):
 
 
 class PasswordResetConfirmView(APIView):
-    throttle_classes = [throttling.scoped_rate_throttle("5/minute", "password_reset_confirm")]
+    throttle_classes = [scoped_rate_throttle("5/minute", "password_reset_confirm")]
     serializer_class = serializers.PasswordResetConfirmSerializer
 
     def post(self, request):

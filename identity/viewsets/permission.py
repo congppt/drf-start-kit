@@ -1,7 +1,9 @@
 from extensions import permissions
 from rest_framework import viewsets
 
-from .. import mixins, models, serializers
+from core import mixins
+
+from .. import models, serializers
 
 
 class PermissionViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -9,6 +11,3 @@ class PermissionViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     permission_classes = [permissions.permissions_class("auth.view_group")]
     serializer_class = serializers.PermissionSerializer
     pagination_class = None
-
-
-

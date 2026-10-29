@@ -91,7 +91,7 @@ Pin direct dependencies in `requirements.txt` with `==`. Add or bump a package t
 Load bundled fixtures when you add seed data under `core/fixtures/`:
 
 ```bash
-python manage.py loaddata core/fixtures/group.json core/fixtures/user.json
+python manage.py loaddata core/fixtures/group.json user/fixtures/user.json
 ```
 
 ## Configuration
@@ -154,11 +154,13 @@ When `ENV` is not `PRODUCTION`, `CORS_ALLOW_ALL_ORIGINS` is enabled so LOCAL and
 
 ```text
 config/                 Django project settings, ASGI/WSGI, root URLs
-core/                   Main application package
+user/                   User accounts: model, API, fixtures, root-user bootstrap
+identity/               Sign-in, password reset, groups, and permissions
+core/                   Shared application package
   models/               Domain models and shared model base classes
   serializers/          DRF serializers grouped by resource
   viewsets/             DRF viewsets and action routing
-  views/                URL registration (auth, health, routers)
+  views/                URL registration (health, meta, log)
   permissions/          Permission exports and permission factories
   pagination/           Pagination classes and factories
   mixins/               DRF and auditable model mixins
@@ -180,7 +182,7 @@ docker-compose.yml      Local services: app, worker, Postgres, Redis, MinIO
 
 `core.views.__init__` automatically imports URL modules and collects their `url_patterns`, so adding a new file under `core/views/` registers endpoints without editing a central list.
 
-Registered URL modules today: `auth`, `health`, `meta`, `user`, `group`, `permission`.
+Registered URL modules today: `health`, `meta`, `log`. Token, password-reset, group, and permission routes live in `identity/urls.py`. User routes live in `user/urls.py`. Both are included from `config/urls.py`.
 
 ## Coding Conventions
 
@@ -238,7 +240,7 @@ When adding a new API resource, create the viewset as a thin orchestration layer
 10. Register the route in a file under `core/views` so `core.views.__init__` can collect it into `core.urls`.
 11. Verify the endpoint in Swagger and add tests when behavior includes permissions, filters, validation, or side effects.
 
-`UserViewSet` is the main reference: `DjangoModelPermissions`, queryset scoping without `core.view_user`, `UserFilter`, limit-offset pagination, action-specific serializers, self-service endpoints, password validation, avatar presigned upload URLs, and MinIO-backed file verification.
+`UserViewSet` is the main reference: `DjangoModelPermissions`, queryset scoping without `user.view_user`, `UserFilter`, limit-offset pagination, action-specific serializers, self-service endpoints, password validation, avatar presigned upload URLs, and MinIO-backed file verification.
 
 Minimal pattern:
 
@@ -415,7 +417,7 @@ In a management command:
 ```python
 from django.core.management.base import BaseCommand
 from core.constants import SYSTEM_ACTOR
-from core.models import User
+from user.models import User
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
@@ -471,7 +473,7 @@ permission_classes = [permissions.factory.permissions_class("auth.view_group")]
 
 Use `DjangoModelPermissions` for model CRUD permissions and `permissions.factory.permissions_class(...)` for a specific Django permission codename.
 
-With stock DRF `DjangoModelPermissions`, safe methods (`GET`, `HEAD`, `OPTIONS`) require an authenticated user but **no** Django model permission codename. Unsafe methods map to `add` / `change` / `delete`. `UserViewSet` additionally uses `core.view_user` in `get_queryset()` to decide whether list/retrieve spans all users or only `request.user`.
+With stock DRF `DjangoModelPermissions`, safe methods (`GET`, `HEAD`, `OPTIONS`) require an authenticated user but **no** Django model permission codename. Unsafe methods map to `add` / `change` / `delete`. `UserViewSet` additionally uses `user.view_user` in `get_queryset()` to decide whether list/retrieve spans all users or only `request.user`.
 
 ### Pagination
 
@@ -901,7 +903,7 @@ On success (`204`), the password is updated and outstanding JWT refresh tokens f
 
 Self-service password change (`PUT /api/users/me/password/`) and avatar presigned upload (`POST /api/users/me/avatar/presigned-upload-url/`) are throttled to `10/minute` per authenticated user.
 
-Token payload claims are camelized to match API JSON (`core/serializers/auth.py`). Send the access token on protected requests:
+Token payload claims are camelized to match API JSON (`identity/serializers.py`). Send the access token on protected requests:
 
 ```http
 Authorization: Bearer <access_token>
@@ -947,7 +949,7 @@ Cache keys are stable across equivalent positional and keyword calls by binding 
 
 ### Email
 
-`integrations.email.send_templated_email` renders Django HTML templates and sends through the configured backend. Password reset is the reference flow: request endpoint → Huey task → `core/templates/email/password_reset_body.html`.
+`integrations.email.send_templated_email` renders Django HTML templates and sends through the configured backend. Password reset is the reference flow: request endpoint → Huey task → `identity/templates/email/password_reset_body.html`.
 
 ### Background tasks
 

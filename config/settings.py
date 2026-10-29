@@ -41,6 +41,8 @@ CORS_ALLOW_ALL_ORIGINS = not env.IS_PRODUCTION or not env.ALLOWED_ORIGINS
 INSTALLED_APPS = [
     # 'django.contrib.admin',
     "core",
+    "user",
+    "identity",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     # 'django.contrib.sessions',
@@ -214,7 +216,7 @@ HUEY = {
 
 
 SIMPLE_JWT = {
-    "TOKEN_OBTAIN_SERIALIZER": "core.serializers.auth.TokenSerializer",
+    "TOKEN_OBTAIN_SERIALIZER": "identity.serializers.TokenSerializer",
     "ACCESS_TOKEN_LIFETIME": timedelta(days=30) if DEBUG else timedelta(minutes=5),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
@@ -224,7 +226,7 @@ SIMPLE_JWT = {
     "USERNAME_CLAIM": "username",
 }
 
-AUTH_USER_MODEL = "core.User"
+AUTH_USER_MODEL = "user.User"
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24  # 24 hours (Django setting used by token generator)
 
 # Password validation

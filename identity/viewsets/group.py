@@ -2,7 +2,9 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from extensions import permissions
 from rest_framework import viewsets
 
-from .. import mixins, models, serializers
+from core import mixins
+
+from .. import models, serializers
 from .permission import PermissionViewSet
 
 
