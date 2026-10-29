@@ -8,7 +8,7 @@ class TextChoiceField(models.CharField):
 
     Pass the enum class as ``choices`` (not ``Enum.choices``)::
 
-        nationality = EnumCharField(max_length=100, choices=Country, null=True)
+        nationality = TextChoiceField(max_length=100, choices=Country, null=True)
     """
 
     def __init__(self, *args, choices=None, **kwargs):

@@ -1,4 +1,4 @@
-from ...serializers import ChoiceSerializer
+from ..serializers import ChoiceSerializer
 
 
 class ChoiceListModelMixin:

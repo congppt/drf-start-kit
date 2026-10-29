@@ -1,7 +1,5 @@
-from extensions import permissions
+from extensions import mixins, permissions
 from rest_framework import viewsets
-
-from core import mixins
 
 from .. import models, serializers
 
