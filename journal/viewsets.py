@@ -1,7 +1,7 @@
-from extensions import permissions
+from extensions import filters, permissions
 from rest_framework import viewsets
 
-from .. import filters, models, serializers
+from . import models, serializers
 
 
 class LogFilter(filters.FilterSet):
