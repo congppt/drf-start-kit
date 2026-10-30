@@ -1,3 +1,2 @@
-from . import attachment, audit
-from .attachment import *
+from . import audit
 from .audit import *
