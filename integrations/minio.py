@@ -18,15 +18,21 @@ class MinioClient:
         self.__client: Minio | None = None
         self.__presign_client: Minio | None = None
 
-    def __build_client(self, *, endpoint: str, secure: bool) -> Minio:
-        connect_timeout = timedelta(seconds=10).seconds
-        read_timeout = timedelta(minutes=5).seconds
+    def __build_client(
+        self,
+        *,
+        endpoint: str,
+        secure: bool,
+        connect_timeout: float = 10,
+        read_timeout: float = 300,
+        retry: bool = True,
+    ) -> Minio:
         http_client = urllib3.PoolManager(
             timeout=urllib3.Timeout(connect=connect_timeout, read=read_timeout),
             maxsize=10,
             cert_reqs="CERT_REQUIRED",
             ca_certs=getattr(env, "SSL_CERT_FILE", certifi.where()),
-            retries=urllib3.Retry(total=5, backoff_factor=0.2, status_forcelist=[500, 502, 503, 504]),
+            retries=urllib3.Retry(total=5, backoff_factor=0.2, status_forcelist=[500, 502, 503, 504]) if retry else False,
         )
         return Minio(
             endpoint=endpoint,
@@ -43,7 +49,7 @@ class MinioClient:
         if self.__client is None:
             self.__client = self.__build_client(
                 endpoint=self.__get_config("MINIO_ENDPOINT"),
-                secure=env.MINIO_SECURE,
+                secure=self.__get_config("MINIO_SECURE"),
             )
         return self.__client
 
@@ -64,7 +70,7 @@ class MinioClient:
 
     def __get_config(self, name: str) -> str:
         resolved = getattr(env, name, None)
-        if not resolved:
+        if resolved is None or resolved == "":
             raise EnvironmentError(f"{name} is not configured")
         return resolved
 
@@ -155,20 +161,12 @@ class MinioClient:
         """
         if not env.MINIO_ENDPOINT:
             return None
-
-        http_client = urllib3.PoolManager(
-            timeout=urllib3.Timeout(connect=timeout, read=timeout),
-            retries=False,
-            cert_reqs="CERT_REQUIRED",
-            ca_certs=getattr(env, "SSL_CERT_FILE", certifi.where()),
-        )
-        client = Minio(
-            endpoint=env.MINIO_ENDPOINT,
-            access_key=self.__get_config("MINIO_ACCESS_KEY"),
-            secret_key=self.__get_config("MINIO_SECRET_KEY"),
-            secure=env.MINIO_SECURE,
-            region=self.__get_config("MINIO_REGION"),
-            http_client=http_client,
+        client = self.__build_client(
+            endpoint=self.__get_config("MINIO_ENDPOINT"),
+            secure=self.__get_config("MINIO_SECURE"),
+            connect_timeout=timeout,
+            read_timeout=timeout,
+            retry=False,
         )
         return client.bucket_exists(self.__get_bucket(is_public=False))
 
