@@ -41,7 +41,8 @@ CORS_ALLOW_ALL_ORIGINS = not env.IS_PRODUCTION or not env.ALLOWED_ORIGINS
 INSTALLED_APPS = [
     # 'django.contrib.admin',
     "shared_kernel",
-    "journal",
+    "attachment", # optional app for storing files
+    "journal", # optional app for querying logs
     "user",
     "identity",
     "django.contrib.auth",

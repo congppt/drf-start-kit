@@ -9,7 +9,7 @@ from rest_framework import serializers
 
 from integrations.minio import minio
 
-from .. import models
+from . import models
 
 
 class FileAttachmentInputSerializer(serializers.Serializer):

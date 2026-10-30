@@ -1,3 +1,8 @@
+from attachment.models import FileAsset, UploadStatus
+from attachment.serializers import (
+    FileAttachmentUpdateSerializerMixin,
+    FilePresignedUploadUrlSerializer,
+)
 from django.contrib.auth import password_validation
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
@@ -8,12 +13,7 @@ from rest_framework import serializers
 from identity.models import Group
 from identity.serializers import PermissionSerializer
 from integrations.minio import minio
-from shared_kernel.models import FileAsset, UploadStatus
-from shared_kernel.serializers import (
-    ExcludeDeleteModelSerializer,
-    FileAttachmentUpdateSerializerMixin,
-    FilePresignedUploadUrlSerializer,
-)
+from shared_kernel.serializers import ExcludeDeleteModelSerializer
 
 from .models import User
 

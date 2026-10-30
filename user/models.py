@@ -1,9 +1,10 @@
+from attachment.models import FileAttachmentMixin
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import UserManager as BaseUserManager
 from django.db import models
 from django.db.models.functions import Lower
 
-from shared_kernel.models import attachment, audit
+from shared_kernel.models import audit
 
 
 class _UserManager(audit.AuditableManager, BaseUserManager):
@@ -32,7 +33,7 @@ class _UserManager(audit.AuditableManager, BaseUserManager):
         return await super().acreate_superuser(username, email, password, **extra_fields)
 
 
-class User(attachment.FileAttachmentMixin, audit.AuditableModel, AbstractUser):
+class User(FileAttachmentMixin, audit.AuditableModel, AbstractUser):
     objects = _UserManager()
 
     preferences = models.JSONField(default=dict)
