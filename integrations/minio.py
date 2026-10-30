@@ -146,5 +146,31 @@ class MinioClient:
         errors = self.client.remove_objects(self.__get_bucket(is_public), objects)
         return list(errors)
 
+    def health_check(self, *, timeout: float) -> bool | None:
+        """
+        Confirm the private bucket is reachable.
+
+        Uses a dedicated client so a slow MinIO cannot inherit the upload client's
+        connect timeout and retries. Returns None when MinIO is not configured.
+        """
+        if not env.MINIO_ENDPOINT:
+            return None
+
+        http_client = urllib3.PoolManager(
+            timeout=urllib3.Timeout(connect=timeout, read=timeout),
+            retries=False,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=getattr(env, "SSL_CERT_FILE", certifi.where()),
+        )
+        client = Minio(
+            endpoint=env.MINIO_ENDPOINT,
+            access_key=self.__get_config("MINIO_ACCESS_KEY"),
+            secret_key=self.__get_config("MINIO_SECRET_KEY"),
+            secure=env.MINIO_SECURE,
+            region=self.__get_config("MINIO_REGION"),
+            http_client=http_client,
+        )
+        return client.bucket_exists(self.__get_bucket(is_public=False))
+
 
 minio = MinioClient()

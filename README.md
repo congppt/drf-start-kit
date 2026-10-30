@@ -6,7 +6,8 @@ A starter kit for building APIs with Django REST Framework. It provides a ready-
 |----------|-----|
 | API root | `/api/` |
 | Swagger UI | `/api/schema/swagger/` (hidden in `PRODUCTION`) |
-| Health check | `/api/health/` |
+| Liveness | `/api/health/live/` |
+| Readiness | `/api/health/ready/` |
 | JWT obtain | `POST /api/token/` |
 | JWT refresh | `POST /api/token/refresh/` |
 | JWT logout | `POST /api/token/logout/` |
