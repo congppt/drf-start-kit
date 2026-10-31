@@ -3,9 +3,12 @@ from django.urls import path
 from django.views.generic import RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
-from . import views
+from .views import liveness, readiness
 
-urlpatterns = views.urlpatterns
+urlpatterns = [
+    path("health/live/", liveness, name="health_liveness"),
+    path("health/ready/", readiness, name="health_readiness"),
+]
 
 if not env.IS_PRODUCTION:
     urlpatterns.extend(

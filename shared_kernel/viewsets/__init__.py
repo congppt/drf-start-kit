@@ -1,1 +1,1 @@
-from .audit import AuditableModelViewSet
+from .audit import *
