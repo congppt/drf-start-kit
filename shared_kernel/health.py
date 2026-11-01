@@ -16,53 +16,15 @@ from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 
 from django.apps import apps
-from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.db import connection
 from django.http import JsonResponse
 
 PROBE_TIMEOUT_SECONDS = 1
 
 ReadinessCheck = Callable[[], bool | None]
-_CORE_CHECK_NAMES = frozenset({"database", "redis"})
 
 
-def _check_database() -> bool:
-    try:
-        connection.ensure_connection()
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-        return True
-    finally:
-        connection.close()
-
-
-def _check_redis() -> bool | None:
-    backend = settings.CACHES["default"]["BACKEND"]
-    if "dummy" in backend.lower():
-        return None
-
-    import redis
-
-    client = redis.Redis.from_url(
-        settings.CACHES["default"]["LOCATION"],
-        socket_connect_timeout=PROBE_TIMEOUT_SECONDS,
-        socket_timeout=PROBE_TIMEOUT_SECONDS,
-    )
-    try:
-        return bool(client.ping())
-    finally:
-        client.close()
-
-
-def core_readiness_checks() -> dict[str, ReadinessCheck]:
-    return {
-        "database": _check_database,
-        "redis": _check_redis,
-    }
-
-
-def app_readiness_checks() -> dict[str, ReadinessCheck]:
+def all_readiness_checks() -> dict[str, ReadinessCheck]:
     """Collect checks from installed apps that define ``readiness_checks``."""
     checks: dict[str, ReadinessCheck] = {}
     for config in apps.get_app_configs():
@@ -73,7 +35,7 @@ def app_readiness_checks() -> dict[str, ReadinessCheck]:
         if not isinstance(provided, Mapping):
             raise ImproperlyConfigured(f"{config.name}.readiness_checks() must return a mapping of name to callable")
         for name, checker in provided.items():
-            if name in _CORE_CHECK_NAMES or name in checks:
+            if name in checks:
                 raise ImproperlyConfigured(f"{config.name} readiness check {name!r} duplicates an existing check")
             if not callable(checker):
                 raise ImproperlyConfigured(f"{config.name} readiness check {name!r} must be callable")

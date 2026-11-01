@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.urls import path
 
-from .health import app_readiness_checks, core_readiness_checks, probe_response, run_checks
+from .health import all_readiness_checks, probe_response, run_checks
 
 
 def liveness(_request):
@@ -9,8 +9,5 @@ def liveness(_request):
 
 
 def readiness(_request):
-    checks = run_checks({**core_readiness_checks(), **app_readiness_checks()})
+    checks = run_checks(all_readiness_checks())
     return probe_response(checks)
-
-
-
