@@ -6,6 +6,8 @@ from django.db.models.functions import Lower
 
 from shared_kernel.models import audit
 
+_SYS_CREATE_SUPERUSER = audit.SystemActor("user", "create-superuser")
+
 
 class _UserManager(audit.AuditableManager, BaseUserManager):
     def _create_user(self, username, email, password, **extra_fields):
@@ -21,15 +23,11 @@ class _UserManager(audit.AuditableManager, BaseUserManager):
         return user
 
     def create_superuser(self, username, email=None, password=None, **extra_fields):
-        from shared_kernel.constants import SYSTEM_ACTOR
-
-        extra_fields.setdefault("performed_by", SYSTEM_ACTOR)
+        extra_fields.setdefault("performed_by", _SYS_CREATE_SUPERUSER)
         return super().create_superuser(username, email, password, **extra_fields)
 
     async def acreate_superuser(self, username, email=None, password=None, **extra_fields):
-        from shared_kernel.constants import SYSTEM_ACTOR
-
-        extra_fields.setdefault("performed_by", SYSTEM_ACTOR)
+        extra_fields.setdefault("performed_by", _SYS_CREATE_SUPERUSER)
         return await super().acreate_superuser(username, email, password, **extra_fields)
 
 

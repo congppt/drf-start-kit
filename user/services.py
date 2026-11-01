@@ -1,8 +1,10 @@
 import env
 
-from shared_kernel.constants import SYSTEM_ACTOR
+from shared_kernel.models.audit import SystemActor
 
 from .models import User
+
+_SYS_ENSURE_ROOT_USER = SystemActor("user", "ensure-root-user")
 
 
 def ensure_root_user() -> None:
@@ -13,7 +15,7 @@ def ensure_root_user() -> None:
         User.objects.create_superuser(
             username=username,
             password=password,
-            performed_by=SYSTEM_ACTOR,
+            performed_by=_SYS_ENSURE_ROOT_USER,
         )
         return
     if user.is_deleted:
@@ -22,4 +24,4 @@ def ensure_root_user() -> None:
     user.is_superuser = True
     user.is_staff = True
     user.is_active = True
-    user.save(performed_by=SYSTEM_ACTOR)
+    user.save(performed_by=_SYS_ENSURE_ROOT_USER)

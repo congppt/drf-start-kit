@@ -360,7 +360,7 @@ Model.objects.filter(...).update(..., performed_by=request.user)
 
 Custom serializer `create()` / `update()` methods must `pop('performed_by')` from `validated_data` and forward it to `instance.save(performed_by=...)` or `Model.objects.create(..., performed_by=...)`.
 
-When no real user exists (commands, tasks, fixtures), use [`SYSTEM_ACTOR`](#system-actor) instead of `request.user`. See [System actor](#system-actor) for usage rules.
+When no real user exists (commands, tasks, fixtures), pass a [`SystemActor`](#system-actor) named for that app and action.
 
 ### Viewset mixins
 
@@ -382,85 +382,21 @@ Prefer explicit `Meta.fields` for most serializers. Use these bases when a seria
 
 ## System actor
 
-Auditable models require `performed_by` on every write. HTTP viewsets pass `request.user`; offline flows (management commands, Huey tasks, fixtures, migrations) have no caller.
+Auditable models require `performed_by` on every write. HTTP viewsets pass `request.user`. Commands, Huey tasks, and other work with no persisted user pass a `SystemActor` from `shared_kernel.models.audit`.
 
-`shared_kernel/constants.py` exports `SYSTEM_ACTOR` — an **unsaved** `User(username='system')`. It is never inserted into the database. Audit fields store the string `'system'` via `performed_by.username`.
-
-### When to use
-
-| Context | Actor |
-|---------|--------|
-| Viewset / API handler | `request.user` |
-| Serializer called from a viewset | `serializer.save(performed_by=request.user)` |
-| Management command | `SYSTEM_ACTOR` |
-| Huey periodic or background task | `SYSTEM_ACTOR` |
-| Fixture load / bootstrap script | `SYSTEM_ACTOR` |
-| `createsuperuser` | `SYSTEM_ACTOR` (default in `_UserManager.create_superuser`) |
-
-### How to use
-
-Import once and pass as `performed_by` on any auditable write:
+`SystemActor(app, action)` stores `system:{app}-{action}`. `app` is the Django app label (`user`, `identity`, `shared_kernel`). `action` is kebab-case (`create-superuser`, `ensure-root`). Each call site defines the actor for its own action. `performed_by` accepts a `SystemActor` or an `AbstractUser`.
 
 ```python
-from shared_kernel.constants import SYSTEM_ACTOR
+from shared_kernel.models.audit import SystemActor
 
-# create
-User.objects.create_user(username='bot', password='...', performed_by=SYSTEM_ACTOR)
+_RECONCILE = SystemActor("journal", "reconcile-records")
 
-# update
-instance.save(performed_by=SYSTEM_ACTOR)
-User.objects.filter(pk=instance.pk).update(is_active=False, performed_by=SYSTEM_ACTOR)
-
-# soft delete
-instance.delete(performed_by=SYSTEM_ACTOR)
+row.save(performed_by=_RECONCILE)
 ```
 
-In a management command:
+`createsuperuser` defaults to `SystemActor("user", "create-superuser")`. Root bootstrap uses `SystemActor("user", "ensure-root")`. Password reset uses `SystemActor("identity", "reset-password")`.
 
-```python
-from django.core.management.base import BaseCommand
-from shared_kernel.constants import SYSTEM_ACTOR
-from user.models import User
-
-class Command(BaseCommand):
-    def handle(self, *args, **options):
-        User.objects.create_user(
-            username='service',
-            password='...',
-            performed_by=SYSTEM_ACTOR,
-        )
-```
-
-In a Huey task:
-
-```python
-from shared_kernel.constants import SYSTEM_ACTOR
-
-@djhuey.db_task()
-def reconcile_records():
-    for row in queryset:
-        row.save(performed_by=SYSTEM_ACTOR)
-```
-
-### Do not use for
-
-- `login()`, session auth, or anything that treats `performed_by` as `request.user`
-- Permission checks (`user.has_perm(...)`, `DjangoModelPermissions`)
-- Foreign keys or relations that expect a saved `User` row
-
-For those cases, load or create a real user in the database.
-
-### Sentinel pattern (optional)
-
-The project uses an unsaved `User` because `_validate_performed_by` expects an object with `username`. If you want to avoid touching the ORM model at all, replace `SYSTEM_ACTOR` with a minimal sentinel that exposes the same attribute — for example:
-
-```python
-from types import SimpleNamespace
-
-SYSTEM_ACTOR = SimpleNamespace(username='system')
-```
-
-Only do this if every call site reads `performed_by.username` and never passes the actor into Django auth APIs.
+Do not pass a `SystemActor` to `login()`, permission checks, or a foreign key that expects a saved `User` row.
 
 ## DRF Reference
 

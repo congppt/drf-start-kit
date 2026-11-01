@@ -11,11 +11,13 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
-from shared_kernel.constants import SYSTEM_ACTOR
+from shared_kernel.models.audit import SystemActor
 from user.models import User
 
 from . import models
 from .tasks import email
+
+_SYS_RESET_PASSWORD = SystemActor("identity", "reset-password")
 
 
 class PermissionSerializer(serializers.ModelSerializer):
@@ -88,7 +90,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         user: User = validated_data["user"]
         with transaction.atomic():
             user.set_password(validated_data["new_password"])
-            user.save(performed_by=SYSTEM_ACTOR)
+            user.save(performed_by=_SYS_RESET_PASSWORD)
             BlacklistedToken.objects.bulk_create(
                 [
                     BlacklistedToken(token_id=token_id)
