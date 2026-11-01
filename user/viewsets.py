@@ -25,7 +25,7 @@ class UserViewSet(
     mixins.ChoiceListModelMixin,
     viewsets.ReadOnlyModelViewSet,
 ):
-    queryset = User.objects.prefetch_related("attachments__file", "groups").all()
+    queryset = User.objects.select_related("avatar").prefetch_related("groups").all()
     serializer_class = serializers.UserSerializer
     permission_classes = [permissions.DjangoModelPermissions]
     filterset_class = UserFilter

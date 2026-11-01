@@ -1,8 +1,6 @@
 from attachment.models import FileAsset, UploadStatus
-from attachment.serializers import (
-    FileAttachmentUpdateSerializerMixin,
-    FilePresignedUploadUrlSerializer,
-)
+from attachment.serializers import FileAssetInputSerializer, FilePresignedUploadUrlSerializer
+from attachment.services import delete_asset
 from django.contrib.auth import password_validation
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
@@ -17,7 +15,6 @@ from shared_kernel.serializers import ExcludeDeleteModelSerializer
 
 from .models import User
 
-AVATAR_FIELD_NAME = User.AVATAR_FIELD_NAME
 AVATAR_IS_PUBLIC = User.AVATAR_IS_PUBLIC
 
 
@@ -33,17 +30,12 @@ class UserSerializer(ExcludeDeleteModelSerializer):
 
     class Meta:
         model = User
-        exclude = ["password", "user_permissions"]
+        exclude = ["password", "user_permissions", "avatar"]
 
     def get_avatar_url(self, obj: User) -> str | None:
-        attachment = (
-            obj.attachments.filter(field_name=AVATAR_FIELD_NAME, file__status=UploadStatus.READY)
-            .select_related("file")
-            .first()
-        )
-        if not attachment:
+        file_asset = obj.avatar
+        if file_asset is None or file_asset.status != UploadStatus.READY:
             return None
-        file_asset = attachment.file
         if file_asset.is_public:
             return minio.get_public_url(file_asset.id)
         return minio.presigned_download(file_asset.id, file_asset.name)
@@ -55,7 +47,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        exclude = ["username", "password", "last_login", "date_joined", "user_permissions"]
+        exclude = ["username", "password", "last_login", "date_joined", "user_permissions", "avatar"]
 
     def validate_email(self, value: str):
         if not value:
@@ -84,7 +76,7 @@ class UserCreateSerializer(UserUpdateSerializer):
 
     class Meta:
         model = User
-        exclude = ["user_permissions", "last_login", "date_joined"]
+        exclude = ["user_permissions", "last_login", "date_joined", "avatar"]
 
     def create(self, validated_data: dict):
         groups = validated_data.pop("groups")
@@ -94,7 +86,7 @@ class UserCreateSerializer(UserUpdateSerializer):
         return user
 
 
-class UserSelfUpdateSerializer(FileAttachmentUpdateSerializerMixin, UserUpdateSerializer):
+class UserSelfUpdateSerializer(UserUpdateSerializer):
     avatar = serializers.PrimaryKeyRelatedField(
         queryset=FileAsset.objects.all(),
         write_only=True,
@@ -106,22 +98,23 @@ class UserSelfUpdateSerializer(FileAttachmentUpdateSerializerMixin, UserUpdateSe
         fields = ["first_name", "last_name", "email", "preferences", "avatar"]
 
     def validate_avatar(self, value: FileAsset):
-        return self.get_attachment_input_serializer(
-            field_name=AVATAR_FIELD_NAME,
-            is_public=AVATAR_IS_PUBLIC,
-        ).validate_file(value)
+        if value.attachments.exists() or User.all_objects.filter(avatar=value).exclude(pk=self.instance.pk).exists():
+            raise serializers.ValidationError(_("This file is already attached to another record."))
+        checker = FileAssetInputSerializer(context=self.context)
+        checker.is_public = AVATAR_IS_PUBLIC
+        return checker.validate_file(value)
 
     def update(self, instance: User, validated_data: dict):
-        avatar = validated_data.pop("avatar", None)
+        avatar = validated_data.get("avatar")
+        previous = instance.avatar
         with transaction.atomic():
             instance = super().update(instance, validated_data)
-            if avatar is not None:
-                self.link_attachment(
-                    instance,
-                    field_name=AVATAR_FIELD_NAME,
-                    unique=True,
-                    files=[avatar],
-                )
+            if avatar is None:
+                return instance
+            avatar.status = UploadStatus.READY
+            avatar.save(update_fields=["status"])
+            if previous is not None and previous.pk != avatar.pk:
+                delete_asset(previous)
         return instance
 
 

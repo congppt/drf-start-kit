@@ -865,16 +865,17 @@ Protected viewsets default to `JWTAuthentication`. Use `permission_classes = [pe
 - public object URLs
 - bulk delete
 
-The avatar flow in `UserViewSet` demonstrates the pattern: create a pending `FileAsset`, return a presigned upload URL, validate the uploaded object with MinIO, attach it to the user, and mark the file as ready.
+The avatar flow in `UserViewSet` demonstrates the pattern: create a pending `FileAsset`, return a presigned upload URL, validate the uploaded object with MinIO, save it on `User.avatar`, and mark the file as ready. Replacing the avatar deletes the previous file and its MinIO object.
 
 Reusable serializers live in `shared_kernel/serializers/attachment.py`:
 
 | Serializer | Role |
 |------------|------|
 | `FilePresignedUploadUrlSerializer` | Create pending `FileAsset`, return presigned upload URL |
-| `FileAttachSerializer` | Validate uploaded object in MinIO and attach to a model |
+| `FileAssetInputSerializer` | Validate ownership, visibility, and the MinIO object |
+| `FileAttachmentInputSerializer` | Also reject a file already attached to another record |
 
-Subclass with `is_public` or override fields for endpoint-specific rules. `UserAvatarUploadUrlSerializer` sets `is_public` and validates `file_name` with `ImageFileNameValidator`. `UserAvatarSelfUpdateSerializer` sets `field_name` and attaches via the shared attach flow.
+Subclass with `is_public` or override fields for endpoint-specific rules. `UserAvatarUploadUrlSerializer` sets `is_public` and validates `file_name` with `ImageFileNameValidator`. `UserSelfUpdateSerializer` validates the uploaded object and stores it on `User.avatar`.
 
 ### Caching
 
@@ -896,7 +897,7 @@ Huey is configured in `config.settings` and imports each installed app's `tasks`
 
 The `send_password_reset_email` task delivers password-reset messages through `integrations.email` (console in local when SMTP is unset, otherwise SMTP).
 
-The `minio_garbage_collect` task runs daily at midnight and deletes orphaned unattached `FileAsset` records and their MinIO objects after `FILE_ORPHANED_INTERVAL`.
+The `minio_garbage_collect` task runs daily at midnight and deletes `PENDING` `FileAsset` rows, and their MinIO objects, that are older than `FILE_ORPHANED_INTERVAL`. Ready files are removed by the update that replaces them, through `attachment.services.delete_asset`.
 
 The `flush_expired_tokens` task runs daily at 03:30 UTC and deletes expired rows from the JWT blacklist `OutstandingToken` table (same effect as `python manage.py flushexpiredtokens`).
 

@@ -12,28 +12,23 @@ from integrations.minio import minio
 from . import models
 
 
-class FileAttachmentInputSerializer(serializers.Serializer):
+class FileAssetInputSerializer(serializers.Serializer):
     """
-    Attach a previously uploaded ``FileAsset`` to a model instance.
+    Validate a previously uploaded ``FileAsset``.
 
-    Validates ownership, MinIO object presence, and optional field binding.
+    Checks ownership, the expected public flag, and the MinIO object. Subclass
+    and set ``is_public`` for the endpoint. Binding the file to a record stays
+    with the caller.
     """
 
     file = serializers.PrimaryKeyRelatedField(queryset=models.FileAsset.objects.all(), write_only=True)
 
-    attachment_field_name: str | None = None
     is_public = False
 
     def validate_file(self, value: models.FileAsset):
         request = self.context["request"]
-        if value.owner != request.user.username:
+        if value.owner != request.user.username or value.is_public != self.is_public:
             raise serializers.ValidationError(_("Please choose a file that you uploaded."))
-        assert self.attachment_field_name
-        attachment: models.FileAttachment = value.attachments.select_related("content_type").first()
-        if attachment and (
-            attachment.content_object != self.instance or attachment.field_name != self.attachment_field_name
-        ):
-            raise serializers.ValidationError(_("This file is already attached to another record."))
 
         file_stat = minio.stat(value.id, is_public=self.is_public)
         if not file_stat:
@@ -43,6 +38,25 @@ class FileAttachmentInputSerializer(serializers.Serializer):
         if file_stat.content_type != value.content_type:
             raise serializers.ValidationError(_("This file type is not supported. Please upload another file."))
         return value
+
+
+class FileAttachmentInputSerializer(FileAssetInputSerializer):
+    """
+    Attach a previously uploaded ``FileAsset`` to a model instance.
+
+    Rejects a file that is already attached to another record or field.
+    """
+
+    attachment_field_name: str | None = None
+
+    def validate_file(self, value: models.FileAsset):
+        assert self.attachment_field_name
+        attachment: models.FileAttachment = value.attachments.select_related("content_type").first()
+        if attachment and (
+            attachment.content_object != self.instance or attachment.field_name != self.attachment_field_name
+        ):
+            raise serializers.ValidationError(_("This file is already attached to another record."))
+        return super().validate_file(value)
 
 
 class FileAttachmentUpdateSerializerMixin:

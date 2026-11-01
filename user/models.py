@@ -1,4 +1,3 @@
-from attachment.models import FileAttachmentMixin
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import UserManager as BaseUserManager
 from django.db import models
@@ -31,9 +30,16 @@ class _UserManager(audit.AuditableManager, BaseUserManager):
         return await super().acreate_superuser(username, email, password, **extra_fields)
 
 
-class User(FileAttachmentMixin, audit.AuditableModel, AbstractUser):
+class User(audit.AuditableModel, AbstractUser):
     objects = _UserManager()
 
+    avatar = models.ForeignKey(
+        "attachment.FileAsset",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
     preferences = models.JSONField(default=dict)
 
     class Meta(AbstractUser.Meta):
@@ -44,6 +50,11 @@ class User(FileAttachmentMixin, audit.AuditableModel, AbstractUser):
                 condition=~models.Q(email=""),
                 name="uq_user_email_ci_when_set",
             ),
+            models.UniqueConstraint(
+                fields=["avatar"],
+                condition=models.Q(avatar__isnull=False),
+                name="uq_user_avatar",
+            ),
         ]
 
     def __str__(self) -> str:
@@ -52,5 +63,4 @@ class User(FileAttachmentMixin, audit.AuditableModel, AbstractUser):
             return f"{full_name} ({self.username})"
         return self.username
 
-    AVATAR_FIELD_NAME = "avatar"
     AVATAR_IS_PUBLIC = True
