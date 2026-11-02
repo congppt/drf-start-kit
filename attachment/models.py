@@ -19,7 +19,10 @@ class FileAsset(models.Model):
     is_public = models.BooleanField(default=False)
     owner = models.CharField(max_length=150)
     status = models.CharField(max_length=10, choices=UploadStatus.choices, default=UploadStatus.PENDING, db_index=True)
-    created = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "app_file_asset"
 
 
 class FileAttachment(models.Model):
@@ -28,7 +31,10 @@ class FileAttachment(models.Model):
     object_id = models.CharField(max_length=64)
     content_object = GenericForeignKey("content_type", "object_id")
     field_name = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        db_table = "app_file_attachment"
 
 class FileAttachmentMixin(models.Model):
     attachments = GenericRelation(FileAttachment)
