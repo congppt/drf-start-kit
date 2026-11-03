@@ -10,6 +10,7 @@ from djangorestframework_camel_case.util import camelize
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from extensions import validators
 from shared_kernel.models.audit import SystemActor
 from user.models import User
 
@@ -50,20 +51,15 @@ class TokenSerializer(TokenObtainPairSerializer):
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):
-    email = serializers.EmailField(write_only=True)
-
-    def validate_email(self, value: str) -> User:
-        user = User.objects.filter(
-            email__iexact=value,
-            is_active=True,
-        ).first()
-        if not user or not user.has_usable_password():
-            raise serializers.ValidationError(_("No active account was found with that email."))
-        return user
+    email = serializers.EmailField(write_only=True, validators=[validators.EmailValidator()])
 
     def create(self, validated_data: dict):
-        user: User = validated_data["email"]
-        email.send_password_reset_email(user.pk)
+        user: User = User.objects.filter(
+            email__iexact=validated_data["email"],
+            is_active=True,
+        ).first()
+        if user:
+            email.send_password_reset_email(user.pk)
         return {}
 
 
