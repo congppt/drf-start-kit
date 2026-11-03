@@ -1,7 +1,9 @@
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import UserManager as BaseUserManager
+from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import models
 from django.db.models.functions import Lower
+from django.utils.translation import gettext_lazy as _
 
 from shared_kernel.models import audit
 
@@ -33,6 +35,20 @@ class _UserManager(audit.AuditableManager, BaseUserManager):
 class User(audit.AuditableModel, AbstractUser):
     objects = _UserManager()
 
+    # AbstractUser.username is unique for every row. Active accounts keep that
+    # rule through a partial unique constraint; a soft-deleted row may share
+    # its username with a new account.
+    username = models.CharField(
+        _("username"),
+        max_length=150,
+        unique=False,
+        help_text=_("Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only."),
+        validators=[UnicodeUsernameValidator()],
+        error_messages={
+            "unique": _("A user with that username already exists."),
+        },
+    )
+
     avatar = models.ForeignKey(
         "attachment.FileAsset",
         null=True,
@@ -43,12 +59,19 @@ class User(audit.AuditableModel, AbstractUser):
     preferences = models.JSONField(default=dict)
 
     class Meta(AbstractUser.Meta):
+        abstract = False
         swappable = "AUTH_USER_MODEL"
         db_table = "app_user"
         constraints = [
             models.UniqueConstraint(
+                fields=["username"],
+                condition=models.Q(is_deleted=False),
+                name="uq_user_username_when_active",
+                violation_error_message=_("A user with that username already exists."),
+            ),
+            models.UniqueConstraint(
                 Lower("email"),
-                condition=~models.Q(email=""),
+                condition=models.Q(is_deleted=False) & ~models.Q(email=""),
                 name="uq_user_email_ci_when_set",
             ),
             models.UniqueConstraint(

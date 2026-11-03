@@ -229,6 +229,8 @@ SIMPLE_JWT = {
 }
 
 AUTH_USER_MODEL = "user.User"
+# Disable auth.E003 system check because we use a custom user model
+SILENCED_SYSTEM_CHECKS = ["auth.E003"]
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24  # 24 hours (Django setting used by token generator)
 
 # Password validation
