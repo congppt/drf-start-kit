@@ -12,11 +12,11 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 
-import env
 from django.utils.timezone import timedelta
 from django.utils.translation import gettext_lazy as _
 from playhouse.pool import PooledPostgresqlDatabase
 
+import env
 from utils.log import LOG_DIR
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.

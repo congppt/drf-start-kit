@@ -5,12 +5,12 @@ from urllib.parse import quote, urlparse
 from uuid import UUID
 
 import certifi
-import env
 import urllib3
 from django.core.files import File
-
 from minio import Minio, S3Error
 from minio.deleteobjects import DeleteObject
+
+import env
 
 
 class MinioClient:

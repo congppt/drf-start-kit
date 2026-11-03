@@ -3,11 +3,11 @@ from contextlib import suppress
 from datetime import date, datetime
 from pathlib import Path
 
-import env
 from django.utils import timezone
 from huey import crontab
 from huey.contrib import djhuey
 
+import env
 from utils.log import LOG_DIR, logger
 
 from .. import models, serializers

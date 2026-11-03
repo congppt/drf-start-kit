@@ -1,5 +1,6 @@
-from extensions import filters, permissions
 from rest_framework import viewsets
+
+from extensions import filters, permissions
 
 from . import models, serializers
 

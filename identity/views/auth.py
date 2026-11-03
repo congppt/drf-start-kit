@@ -1,5 +1,4 @@
 from django.urls import path
-from extensions.throttling import scoped_rate_throttle
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -8,6 +7,8 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+
+from extensions.throttling import scoped_rate_throttle
 
 from .. import serializers, throttling
 

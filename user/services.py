@@ -1,5 +1,4 @@
 import env
-
 from shared_kernel.models.audit import SystemActor
 
 from .models import User

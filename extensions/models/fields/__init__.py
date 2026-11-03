@@ -1,1 +1,1 @@
-from choice import *
+from .choice import *
