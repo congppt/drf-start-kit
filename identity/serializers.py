@@ -9,12 +9,12 @@ from djangorestframework_camel_case.settings import api_settings
 from djangorestframework_camel_case.util import camelize
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
+from extensions import validators
 from shared_kernel.models.audit import SystemActor
 from user.models import User
 
-from . import models
+from . import models, services
 from .tasks import email
 
 _SYS_RESET_PASSWORD = SystemActor("identity", "reset-password")
@@ -51,20 +51,15 @@ class TokenSerializer(TokenObtainPairSerializer):
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):
-    email = serializers.EmailField(write_only=True)
-
-    def validate_email(self, value: str) -> User:
-        user = User.objects.filter(
-            email__iexact=value,
-            is_active=True,
-        ).first()
-        if not user or not user.has_usable_password():
-            raise serializers.ValidationError(_("No active account was found with that email."))
-        return user
+    email = serializers.EmailField(write_only=True, validators=[validators.EmailValidator()])
 
     def create(self, validated_data: dict):
-        user: User = validated_data["email"]
-        email.send_password_reset_email(user.pk)
+        user: User = User.objects.filter(
+            email__iexact=validated_data["email"],
+            is_active=True,
+        ).first()
+        if user:
+            email.send_password_reset_email(user.pk)
         return {}
 
 
@@ -91,11 +86,5 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         with transaction.atomic():
             user.set_password(validated_data["new_password"])
             user.save(performed_by=_SYS_RESET_PASSWORD)
-            BlacklistedToken.objects.bulk_create(
-                [
-                    BlacklistedToken(token_id=token_id)
-                    for token_id in OutstandingToken.objects.filter(user=user).values_list("pk", flat=True)
-                ],
-                ignore_conflicts=True,
-            )
+            services.blacklist_outstanding_refresh_tokens(user)
         return {}
