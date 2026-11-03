@@ -48,22 +48,10 @@ class UserViewSet(
                 return serializers.UserCreateSerializer
             case "update" | "partial_update":
                 return serializers.UserUpdateSerializer
+            case "update_self":
+                return serializers.UserSelfUpdateSerializer
             case _:
                 return super().get_serializer_class()
-
-    @action(
-        detail=False,
-        methods=["patch"],
-        url_path="me",
-        serializer_class=serializers.UserSelfUpdateSerializer,
-        permission_classes=[permissions.IsAuthenticated],
-    )
-    def update_self(self, request, pk=None):
-        instance = request.user
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save(performed_by=request.user)
-        return Response(serializer.data)
 
     @action(
         detail=False,
@@ -80,6 +68,14 @@ class UserViewSet(
             .distinct()
         )
         serializer = self.get_serializer({"user": instance, "permissions": instance_perms})
+        return Response(serializer.data)
+
+    @retrieve_self.mapping.patch
+    def update_self(self, request, pk=None):
+        instance = request.user
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(performed_by=request.user)
         return Response(serializer.data)
 
     @action(
