@@ -45,17 +45,53 @@ PY
   echo "change-me-in-production"
 }
 
+generate_root_password() {
+  if command_exists python; then
+    python - <<'PY'
+import secrets
+
+print(secrets.token_urlsafe(18))
+PY
+    return
+  fi
+
+  if command_exists openssl; then
+    openssl rand -base64 18 | tr -d '\n'
+    return
+  fi
+
+  echo "change-me"
+}
+
+encode_base64() {
+  if command_exists python; then
+    python -c 'import base64, sys; print(base64.b64encode(sys.argv[1].encode()).decode())' "$1"
+    return
+  fi
+
+  printf '%s' "$1" | openssl base64 -A
+}
+
 ensure_env_file() {
   if [[ -f .env ]]; then
     echo ".env already exists"
+    if ! grep -q '^ROOT_USERNAME=.' .env || ! grep -q '^ROOT_PASSWORD=.' .env; then
+      echo "Add ROOT_USERNAME and a base64 ROOT_PASSWORD to .env. Settings will not import without them." >&2
+    fi
     return
   fi
+
+  local root_password root_password_b64
+  root_password="$(generate_root_password)"
+  root_password_b64="$(encode_base64 "$root_password")"
 
   echo "Creating .env with development defaults"
   cat > .env <<EOF
 ENV=LOCAL
 DB_URL=postgresql://postgres:postgres@localhost:5432/postgres
 SECRET_KEY=$(generate_secret_key)
+ROOT_USERNAME=root
+ROOT_PASSWORD=${root_password_b64}
 REDIS_URL=redis://localhost:6379
 LANGUAGE_CODE=vi
 FRONTEND_URL=http://localhost:3000
@@ -66,6 +102,9 @@ MINIO__PUBLIC_BUCKET=public
 MINIO__PRIVATE_BUCKET=private
 MINIO__SECURE=false
 EOF
+
+  echo "Root user: root"
+  echo "Root password: ${root_password}"
 }
 
 install_gettext() {
