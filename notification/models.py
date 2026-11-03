@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from extensions.models import TextChoiceField
 
+from extensions.models import TextChoiceField
 from user.models import User
 
 

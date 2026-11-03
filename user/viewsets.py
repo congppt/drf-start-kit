@@ -1,8 +1,9 @@
 from django.db.models import Q
-from extensions import filters, mixins, pagination, permissions, throttling
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+
+from extensions import filters, mixins, pagination, permissions, throttling
 
 from identity.models import Group, Permission
 from shared_kernel.mixins import CreateAuditableModelMixin, UpdateAuditableModelMixin

@@ -4,7 +4,6 @@ import uuid
 from datetime import timedelta
 from enum import IntEnum
 
-import env
 from loguru import logger as __logger
 from loguru._defaults import (
     LOGURU_CRITICAL_NO,
@@ -15,6 +14,8 @@ from loguru._defaults import (
     LOGURU_TRACE_NO,
     LOGURU_WARNING_NO,
 )
+
+import env
 
 
 class LogLevel(IntEnum):

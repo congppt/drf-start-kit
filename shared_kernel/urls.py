@@ -1,7 +1,8 @@
-import env
 from django.urls import path
 from django.views.generic import RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
+import env
 
 from .views import liveness, readiness
 
