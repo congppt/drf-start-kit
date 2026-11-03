@@ -25,7 +25,7 @@ def minio_garbage_collect():
     assets = list(
         FileAsset.objects.filter(
             status=UploadStatus.PENDING,
-            created__lt=cutoff,
+            created_at__lt=cutoff,
         ).only("id", "is_public")
     )
 

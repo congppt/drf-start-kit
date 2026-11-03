@@ -4,9 +4,9 @@ from collections.abc import Sequence
 from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-from extensions import validators
 from rest_framework import serializers
 
+from extensions import validators
 from integrations.minio import minio
 
 from . import models
@@ -134,7 +134,7 @@ class FilePresignedUploadUrlSerializer(serializers.Serializer):
 class FileAssetSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.FileAsset
-        fields = ["name", "content_type", "size", "owner", "created"]
+        fields = ["name", "content_type", "size", "owner", "created_at"]
 
 
 class FileAttachmentSerializer(serializers.ModelSerializer):

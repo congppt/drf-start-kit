@@ -31,7 +31,7 @@ class UserViewSet(
     filterset_class = UserFilter
     pagination_class = pagination.limit_offset_class(maximum_limit=200)
     search_fields = ["username", "email", "first_name", "last_name"]
-    ordering_fields = ["username", "email", "created", "date_joined"]
+    ordering_fields = ["username", "email", "created_at", "date_joined"]
     ordering = ["username"]
 
     def get_queryset(self):
