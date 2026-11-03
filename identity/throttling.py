@@ -10,10 +10,12 @@ class AuthThrottle(SimpleRateThrottle):
     scope = "auth"
 
     def get_cache_key(self, request, view):
-        username = request.data["username"].lower()
+        username = request.data.get("username")
+        if not username:
+            return None
         return self.cache_format % {
             "scope": self.scope,
-            "ident": username,
+            "ident": username.lower(),
         }
 
 
@@ -27,5 +29,5 @@ class ReAuthThrottle(SimpleRateThrottle):
             token = RefreshToken(token_raw)
             return self.cache_format % {
                 "scope": self.scope,
-                "ident": token[settings.SIMPLE_JWT["USER_ID_CLAIM"]].lower(),
+                "ident": str(token[settings.SIMPLE_JWT["USER_ID_CLAIM"]]).lower(),
             }
