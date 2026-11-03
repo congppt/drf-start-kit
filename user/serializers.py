@@ -10,6 +10,7 @@ from extensions import validators
 from extensions.serializers import BaseChoiceSerializer
 from identity.models import Group
 from identity.serializers import PermissionSerializer
+from identity.services import blacklist_outstanding_refresh_tokens
 from integrations.minio import minio
 from shared_kernel.serializers import ExcludeDeleteModelSerializer
 
@@ -133,8 +134,10 @@ class PasswordChangeSerializer(serializers.Serializer):
 
     def update(self, instance: User, validated_data: dict):
         performed_by = validated_data.pop("performed_by")
-        instance.set_password(validated_data["new_password"])
-        instance.save(performed_by=performed_by)
+        with transaction.atomic():
+            instance.set_password(validated_data["new_password"])
+            instance.save(performed_by=performed_by)
+            blacklist_outstanding_refresh_tokens(instance)
         return instance
 
 

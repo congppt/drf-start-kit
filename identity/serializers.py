@@ -9,12 +9,11 @@ from djangorestframework_camel_case.settings import api_settings
 from djangorestframework_camel_case.util import camelize
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
 from shared_kernel.models.audit import SystemActor
 from user.models import User
 
-from . import models
+from . import models, services
 from .tasks import email
 
 _SYS_RESET_PASSWORD = SystemActor("identity", "reset-password")
@@ -91,11 +90,5 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         with transaction.atomic():
             user.set_password(validated_data["new_password"])
             user.save(performed_by=_SYS_RESET_PASSWORD)
-            BlacklistedToken.objects.bulk_create(
-                [
-                    BlacklistedToken(token_id=token_id)
-                    for token_id in OutstandingToken.objects.filter(user=user).values_list("pk", flat=True)
-                ],
-                ignore_conflicts=True,
-            )
+            services.blacklist_outstanding_refresh_tokens(user)
         return {}
