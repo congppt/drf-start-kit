@@ -18,12 +18,11 @@ Including another URLconf
 from django.urls import include, path
 from django.views.generic import RedirectView
 
-from shared_kernel import urls as shared_kernel_urls
-
 urlpatterns = [
-    path("api/", include(shared_kernel_urls)),
+    path("api/", include("shared_kernel.urls")),
     path("api/", include("journal.urls")),
     path("api/", include("identity.urls")),
     path("api/", include("user.urls")),
+    path("api/", include("notification.urls")),
     path("", RedirectView.as_view(url="api/", permanent=False)),
 ]

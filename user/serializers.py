@@ -1,13 +1,13 @@
-from attachment.models import FileAsset, UploadStatus
-from attachment.serializers import FileAssetInputSerializer, FilePresignedUploadUrlSerializer
-from attachment.services import delete_asset
 from django.contrib.auth import password_validation
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
-from extensions import validators
-from extensions.serializers import BaseChoiceSerializer
 from rest_framework import serializers
 
+from attachment.models import FileAsset, UploadStatus
+from attachment.serializers import FileAssetInputSerializer, FilePresignedUploadUrlSerializer
+from attachment.services import delete_asset
+from extensions import validators
+from extensions.serializers import BaseChoiceSerializer
 from identity.models import Group
 from identity.serializers import PermissionSerializer
 from integrations.minio import minio
@@ -52,7 +52,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     def validate_email(self, value: str):
         if not value:
             return value
-        qs = User.all_objects.filter(email__iexact=value)
+        qs = User.objects.filter(email__iexact=value)
         if self.instance is not None:
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
@@ -77,6 +77,11 @@ class UserCreateSerializer(UserUpdateSerializer):
     class Meta:
         model = User
         exclude = ["user_permissions", "last_login", "date_joined", "avatar"]
+
+    def validate_username(self, value: str):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError(_("A user with that username already exists."))
+        return value
 
     def create(self, validated_data: dict):
         groups = validated_data.pop("groups")
