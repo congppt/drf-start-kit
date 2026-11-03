@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "journal", # optional app for querying logs
     "user",
     "identity",
+    "notification",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     # 'django.contrib.sessions',
