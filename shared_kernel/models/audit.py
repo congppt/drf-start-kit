@@ -14,9 +14,10 @@ class SystemActor:
     """
     Audit actor for a write with no persisted user.
 
-    ``username`` is ``system:{app}-{action}`` and is stored on ``created_by``,
-    ``updated_by``, and ``deleted_by``. ``app`` is the Django app label. ``action``
-    is the kebab-case name of that app's command, task, or consumer.
+    ``username`` is ``system:{app}:{action}``. Audit columns store that value for
+    a system actor, and ``str(user.id)`` for a saved user. ``app`` is the Django
+    app label. ``action`` is the kebab-case name of that app's command, task, or
+    consumer.
     """
 
     def __init__(self, app: str, action: str):
@@ -24,7 +25,7 @@ class SystemActor:
             raise ValueError("app must be a Django app label")
         if not isinstance(action, str) or _ACTION_RE.fullmatch(action) is None:
             raise ValueError("action must be kebab-case")
-        username = f"system:{app}-{action}"
+        username = f"system:{app}:{action}"
         if len(username) > _USERNAME_MAX_LENGTH:
             raise ValueError(f"username must be at most {_USERNAME_MAX_LENGTH} characters")
         self.app = app
@@ -33,6 +34,18 @@ class SystemActor:
 
 
 PerformedBy = SystemActor | AbstractUser
+
+
+def _extract_actor_identifier(actor: PerformedBy) -> str:
+    """
+    Extract the actor identifier from the actor.
+    For system actors, use the username.
+    For users, use the user.id.
+    """
+    identifier = str(getattr(actor, "id", actor.username))
+    if not identifier:
+        raise ValueError("Actor has no identifier")
+    return identifier
 
 
 def _validate_performed_by(value: PerformedBy) -> PerformedBy:
@@ -50,21 +63,27 @@ def _validate_performed_by(value: PerformedBy) -> PerformedBy:
 
 class _AuditableQuerySet(models.QuerySet):
     def delete(self, performed_by: PerformedBy):
-        performed_by = _validate_performed_by(performed_by)
-        return super().update(is_deleted=True, deleted_at=timezone.now(), deleted_by=performed_by.username)
+        actor = _validate_performed_by(performed_by)
+        return super().update(
+            is_deleted=True, deleted_at=timezone.now(), deleted_by=_extract_actor_identifier(actor)
+        )
 
     def restore(self):
         return super().update(is_deleted=False, deleted_at=None, deleted_by=None)
 
     def update(self, **kwargs):
         actor = _validate_performed_by(kwargs.pop("performed_by"))
-        return super().update(updated_by=actor.username, **kwargs)
+        return super().update(updated_by=_extract_actor_identifier(actor), **kwargs)
 
-    def bulk_update(self, *args, **kwargs):
+    def bulk_update(self, objs, fields, *args, **kwargs):
         actor = _validate_performed_by(kwargs.pop("performed_by"))
-        for obj in args[0]:
-            obj.updated_by = actor.username
-        return super().bulk_update(*args, **kwargs)
+        field_names = list(fields)
+        if "updated_by" not in field_names:
+            field_names.append("updated_by")
+        identifier = _extract_actor_identifier(actor)
+        for obj in objs:
+            obj.updated_by = identifier
+        return super().bulk_update(objs, field_names, *args, **kwargs)
 
     def create(self, *args, **kwargs):
         """
@@ -86,8 +105,8 @@ class _AuditableQuerySet(models.QuerySet):
     def bulk_create(self, *args, **kwargs):
         actor = _validate_performed_by(kwargs.pop("performed_by"))
         for obj in args[0]:
-            obj.created_by = actor.username
-            obj.updated_by = actor.username
+            obj.created_by = _extract_actor_identifier(actor)
+            obj.updated_by = obj.created_by
         return super().bulk_create(*args, **kwargs)
 
 
@@ -115,18 +134,18 @@ class AuditableModel(models.Model):
         actor = _validate_performed_by(kwargs.get("performed_by"))
         self.is_deleted = True
         self.deleted_at = timezone.now()
-        self.deleted_by = actor.username
-        self.save(update_fields=["is_deleted", "deleted", "deleted_by"], *args, **kwargs)
+        self.deleted_by = _extract_actor_identifier(actor)
+        self.save(update_fields=["is_deleted", "deleted_at", "deleted_by"], *args, **kwargs)
 
     def restore(self):
         self.is_deleted = False
         self.deleted_at = None
         self.deleted_by = None
-        super().save(update_fields=["is_deleted", "deleted", "deleted_by"])
+        super().save(update_fields=["is_deleted", "deleted_at", "deleted_by"])
 
     def save(self, *args, **kwargs):
         actor = _validate_performed_by(kwargs.pop("performed_by"))
-        self.created_by = self.created_by or actor.username
+        self.created_by = self.created_by or _extract_actor_identifier(actor)
         if not self.is_deleted:
-            self.updated_by = actor.username
+            self.updated_by = _extract_actor_identifier(actor)
         return super().save(*args, **kwargs)
